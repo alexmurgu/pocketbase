@@ -10,6 +10,8 @@ RUN cd examples/base && go build -o pocketbase ./
 
 # Build the final image
 FROM alpine:latest
+LABEL org.opencontainers.image.source="https://github.com/alexmurgu/pocketbase"
+LABEL org.opencontainers.image.description="PocketBase with PostgreSQL support"
 RUN apk add --no-cache ca-certificates postgresql-client
 
 # Copy pocketbase binary from the builder stage
