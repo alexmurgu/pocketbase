@@ -44,7 +44,7 @@ See: [pocketbase/pocketbase](https://github.com/pocketbase/pocketbase)
      -e PB_HTTP_ADDR=127.0.0.1:8090 \
      -e PB_DATA_DIR="/data" \
      -e POSTGRES_URL="postgres://user:pass@127.0.0.1:5432/postgres?sslmode=disable" \
-     git.firewatch.cy/alex/pocketbase:v0.40.4-postgres.4
+     ghcr.io/alexmurgu/pocketbase:v0.40.4-postgres.5
    ```
 
 3. Get admin password reset link
