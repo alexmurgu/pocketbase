@@ -10,6 +10,26 @@ const sortRegex = /^([\+\-])?(\w+)$/;
 window.app.consts = window.app.consts || {};
 window.app.consts.COLUMNS_STORAGE_PREFIX = "pbColumns_";
 
+function getDefaultSort(collection) {
+    if (collection?.type == "view") {
+        return undefined;
+    }
+
+    const hasField = (name) => collection?.fields?.some((field) => field.name == name);
+
+    if (hasField("created")) {
+        return "-created";
+    }
+
+    if (hasField("updated")) {
+        return "-updated";
+    }
+
+    // Every non-view collection has an id field. Unlike PostgreSQL ctid, its
+    // ordering remains stable when rows are updated or vacuumed.
+    return "id";
+}
+
 /**
  * Creates new page records listing element.
  *
@@ -119,8 +139,7 @@ window.app.components.recordsList = function(propsArg = {}) {
                 ? props.collection.fields.find((f) => !f.hidden && f.name === sortMatch[2])
                 : null;
             if (!sortField) {
-                // default fallback to -@rowid when available
-                normalizedSort = props.collection.type != "view" ? "-@rowid" : undefined;
+                normalizedSort = getDefaultSort(props.collection);
             } else if (sortField?.type == "relation") {
                 const sortCollection = app.store.collections?.find((c) => c.id == sortField.collectionId);
 
