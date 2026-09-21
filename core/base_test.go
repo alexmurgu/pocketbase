@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	_ "unsafe"
@@ -22,12 +23,11 @@ func TestNewBaseApp(t *testing.T) {
 	const testDataDir = "./pb_base_app_test_data_dir/"
 	defer os.RemoveAll(testDataDir)
 
-	app, cleanup := core.NewBaseAppForTest(core.BaseAppConfig{
+	app := core.NewBaseApp(core.BaseAppConfig{
 		DataDir:       testDataDir,
 		EncryptionEnv: "test_env",
 		IsDev:         true,
 	})
-	defer cleanup()
 
 	if app.DataDir() != testDataDir {
 		t.Fatalf("expected DataDir %q, got %q", testDataDir, app.DataDir())
@@ -62,11 +62,10 @@ func TestBaseAppBootstrap(t *testing.T) {
 	const testDataDir = "./pb_base_app_test_data_dir/"
 	defer os.RemoveAll(testDataDir)
 
-	app, cleanup := core.NewBaseAppForTest(core.BaseAppConfig{
+	app := core.NewBaseApp(core.BaseAppConfig{
 		DataDir: testDataDir,
 	})
-	defer app.ResetBootstrapState()
-	defer cleanup()
+	defer app.ClearBootstrap()
 
 	if app.IsBootstrapped() {
 		t.Fatal("Didn't expect the application to be bootstrapped.")
@@ -116,7 +115,7 @@ func TestBaseAppBootstrap(t *testing.T) {
 	runNilChecks(nilChecksBeforeReset)
 
 	// reset
-	if err := app.ResetBootstrapState(); err != nil {
+	if err := app.ClearBootstrap(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -139,10 +138,10 @@ func TestNewBaseAppTx(t *testing.T) {
 	const testDataDir = "./pb_base_app_test_data_dir/"
 	defer os.RemoveAll(testDataDir)
 
-	app, cleanup := core.NewBaseAppForTest(core.BaseAppConfig{
+	app := core.NewBaseApp(core.BaseAppConfig{
 		DataDir: testDataDir,
 	})
-	defer cleanup()
+	defer app.ClearBootstrap()
 
 	if err := app.Bootstrap(); err != nil {
 		t.Fatal(err)
@@ -182,11 +181,11 @@ func TestBaseAppNewMailClient(t *testing.T) {
 	const testDataDir = "./pb_base_app_test_data_dir/"
 	defer os.RemoveAll(testDataDir)
 
-	app, cleanup := core.NewBaseAppForTest(core.BaseAppConfig{
+	app := core.NewBaseApp(core.BaseAppConfig{
 		DataDir:       testDataDir,
 		EncryptionEnv: "pb_test_env",
 	})
-	defer cleanup()
+	defer app.ClearBootstrap()
 
 	client1 := app.NewMailClient()
 	m1, ok := client1.(*mailer.Sendmail)
@@ -213,10 +212,10 @@ func TestBaseAppNewFilesystem(t *testing.T) {
 	const testDataDir = "./pb_base_app_test_data_dir/"
 	defer os.RemoveAll(testDataDir)
 
-	app, cleanup := core.NewBaseAppForTest(core.BaseAppConfig{
+	app := core.NewBaseApp(core.BaseAppConfig{
 		DataDir: testDataDir,
 	})
-	defer cleanup()
+	defer app.ClearBootstrap()
 
 	// local
 	local, localErr := app.NewFilesystem()
@@ -242,10 +241,10 @@ func TestBaseAppNewBackupsFilesystem(t *testing.T) {
 	const testDataDir = "./pb_base_app_test_data_dir/"
 	defer os.RemoveAll(testDataDir)
 
-	app, cleanup := core.NewBaseAppForTest(core.BaseAppConfig{
+	app := core.NewBaseApp(core.BaseAppConfig{
 		DataDir: testDataDir,
 	})
-	defer cleanup()
+	defer app.ClearBootstrap()
 
 	// local
 	local, localErr := app.NewBackupsFilesystem()
@@ -267,68 +266,172 @@ func TestBaseAppNewBackupsFilesystem(t *testing.T) {
 	}
 }
 
+const logsThreshold = 200
+
+func assertLogsCount(t *testing.T, app core.App, expected int) {
+	var total int
+
+	err := app.LogQuery().Select("count(*)").Row(&total)
+	if err != nil {
+		t.Fatalf("Failed to fetch total logs: %v", err)
+	}
+
+	if total != expected {
+		t.Fatalf("Expected %d log(s), got %d", expected, total)
+	}
+}
+
 func TestBaseAppLoggerWrites(t *testing.T) {
+	t.Parallel()
+
+	// note: outside of synctest because the bootstrap tickers could deadlock
+	app, _ := tests.NewTestApp()
+	defer app.Cleanup()
+
+	// clear old logs
+	err := app.DeleteOldLogs(time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("disabled logs retention", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			app.Settings().Logs.MaxDays = 0
+
+			for i := 0; i < logsThreshold+1; i++ {
+				app.Logger().Error("test")
+			}
+
+			// short delay for the non-blocking write goroutine
+			synctest.Sleep(time.Nanosecond)
+
+			assertLogsCount(t, app, 0)
+		})
+	})
+
+	t.Run("test batch logs writes", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			app.Settings().Logs.MaxDays = 2
+
+			for i := 0; i < logsThreshold-1; i++ {
+				app.Logger().Error("test")
+			}
+
+			// short delay for the non-blocking write goroutine
+			synctest.Sleep(time.Nanosecond)
+
+			// below threshold
+			assertLogsCount(t, app, 0)
+
+			// threshold reached -> should trigger batch write
+			app.Logger().Error("test")
+
+			// should be skipped from this batch and added for the next
+			app.Logger().Error("test")
+
+			// short delay for the non-blocking write goroutine
+			synctest.Sleep(time.Nanosecond)
+
+			assertLogsCount(t, app, logsThreshold)
+
+			// note: we can't test the flush timer here because the ticker
+			// was started out of the synctest buble to avoid deadlocks
+			// (see TestBaseAppLoggerWritesAwaited for a flaky but real timer test)
+		})
+	})
+}
+
+func TestBaseAppLoggerWritesAwaited(t *testing.T) {
 	t.Parallel()
 
 	app, _ := tests.NewTestApp()
 	defer app.Cleanup()
 
-	// reset
-	if err := app.DeleteOldLogs(time.Now()); err != nil {
+	// clear old logs
+	err := app.DeleteOldLogs(time.Now())
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	const logsThreshold = 200
-
-	totalLogs := func(app core.App, t *testing.T) int {
-		var total int
-
-		err := app.LogQuery().Select("count(*)").Row(&total)
-		if err != nil {
-			t.Fatalf("Failed to fetch total logs: %v", err)
-		}
-
-		return total
+	// enable logs persistence
+	app.Settings().Logs.MaxDays = 1
+	err = app.Save(app.Settings())
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	t.Run("disabled logs retention", func(t *testing.T) {
-		app.Settings().Logs.MaxDays = 0
+	t.Run("flush on timer tick", func(t *testing.T) {
+		timeout := time.After(5 * time.Second)
+		done := make(chan struct{})
 
-		for i := 0; i < logsThreshold+1; i++ {
-			app.Logger().Error("test")
+		logsHook := app.OnModelAfterCreateSuccess("_logs")
+		hookId := logsHook.BindFunc(func(e *core.ModelEvent) error {
+			done <- struct{}{}
+			return e.Next()
+		})
+		defer logsHook.Unbind(hookId)
+
+		app.Logger().Error("test")
+
+		// short wait to ensure that there is no non-blocking write
+		time.Sleep(500 * time.Millisecond)
+
+		assertLogsCount(t, app, 0)
+
+		// wait for the ticker to write the db record
+		select {
+		case <-timeout:
+			t.Fatal("ticker wait timeout")
+		case <-done:
 		}
 
-		if total := totalLogs(app, t); total != 0 {
-			t.Fatalf("Expected no logs, got %d", total)
-		}
+		assertLogsCount(t, app, 1)
 	})
 
-	t.Run("test batch logs writes", func(t *testing.T) {
-		app.Settings().Logs.MaxDays = 1
-
-		for i := 0; i < logsThreshold-1; i++ {
-			app.Logger().Error("test")
-		}
-
-		if total := totalLogs(app, t); total != 0 {
-			t.Fatalf("Expected no logs, got %d", total)
-		}
-
-		// should trigger batch write
+	t.Run("before ClearBootstrap flush", func(t *testing.T) {
 		app.Logger().Error("test")
 
-		// should be added for the next batch write
-		app.Logger().Error("test")
+		app.Bootstrap()
 
-		if total := totalLogs(app, t); total != logsThreshold {
-			t.Fatalf("Expected %d logs, got %d", logsThreshold, total)
+		assertLogsCount(t, app, 2)
+	})
+
+	t.Run("batch flush inside aux transaction shouldn't hang", func(t *testing.T) {
+		timeout := time.After(1 * time.Second)
+		done := make(chan struct{})
+		totalCreated := 0
+
+		logsHook := app.OnModelAfterCreateSuccess("_logs")
+		hookId := logsHook.BindFunc(func(e *core.ModelEvent) error {
+			totalCreated++
+			if totalCreated == 200 {
+				done <- struct{}{}
+			}
+			return e.Next()
+		})
+		defer logsHook.Unbind(hookId)
+
+		app.AuxRunInTransaction(func(txApp core.App) error {
+			for range logsThreshold {
+				txApp.Logger().Error("test")
+			}
+
+			return nil
+		})
+
+		// wait for the non-blocking write
+		select {
+		case <-timeout:
+			t.Fatal("non-blocking write timeout")
+		case <-done:
 		}
 
-		// wait for ~3 secs to check the timer trigger
-		time.Sleep(3200 * time.Millisecond)
-		if total := totalLogs(app, t); total != logsThreshold+1 {
-			t.Fatalf("Expected %d logs, got %d", logsThreshold+1, total)
-		}
+		assertLogsCount(t, app, 202)
+
+		// force clear to ensure that there are no other logs
+		app.Bootstrap()
+
+		assertLogsCount(t, app, 202)
 	})
 }
 
@@ -367,11 +470,11 @@ func TestBaseAppRefreshSettingsLoggerMinLevelEnabled(t *testing.T) {
 			const testDataDir = "./pb_base_app_test_data_dir/"
 			defer os.RemoveAll(testDataDir)
 
-			app, cleanup := core.NewBaseAppForTest(core.BaseAppConfig{
+			app := core.NewBaseApp(core.BaseAppConfig{
 				DataDir: testDataDir,
 				IsDev:   s.isDev,
 			})
-			defer cleanup()
+			defer app.ClearBootstrap()
 
 			if err := app.Bootstrap(); err != nil {
 				t.Fatal(err)
@@ -467,15 +570,7 @@ func TestBaseAppDBDualBuilder(t *testing.T) {
 
 	allTests := append(regularTests, txTests...)
 	for _, item := range allTests {
-		/* SQLite:
 		if item.isConcurrent {
-		*/
-		// PostgreSQL:
-		// Note:
-		// In SQLite, we have to seperate concurrent and nonconcurrent queries because
-		// SQLite does not allow connurrent write operations.
-		// But in PostgreSQL allows concurrent write operations.
-		if 1 == -1 {
 			if !slices.Contains(concurrentQueries, item.query) {
 				t.Fatalf("Expected concurrent query\n%q\ngot\nconcurrent:%v\nnonconcurrent:%v", item.query, concurrentQueries, nonconcurrentQueries)
 			}
@@ -551,15 +646,7 @@ func TestBaseAppAuxDBDualBuilder(t *testing.T) {
 
 	allTests := append(regularTests, txTests...)
 	for _, item := range allTests {
-		/* SQLite:
 		if item.isConcurrent {
-		*/
-		// PostgreSQL:
-		// Note:
-		// In SQLite, we have to seperate concurrent and nonconcurrent queries because
-		// SQLite does not allow connurrent write operations.
-		// But in PostgreSQL allows concurrent write operations.
-		if 1 == -1 {
 			if !slices.Contains(concurrentQueries, item.query) {
 				t.Fatalf("Expected concurrent query\n%q\ngot\nconcurrent:%v\nnonconcurrent:%v", item.query, concurrentQueries, nonconcurrentQueries)
 			}

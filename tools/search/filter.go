@@ -249,7 +249,7 @@ func buildResolversExpr(
 			expr = dbx.Enclose(dbx.And(expr, mm))
 		} else if left.MultiMatchSubQuery != nil {
 			mm := &manyVsOneExpr{
-				noCoalesce:   left.NoCoalesce,
+				nullFallback: left.NullFallback,
 				subQuery:     left.MultiMatchSubQuery,
 				op:           op,
 				otherOperand: right,
@@ -258,7 +258,7 @@ func buildResolversExpr(
 			expr = dbx.Enclose(dbx.And(expr, mm))
 		} else if right.MultiMatchSubQuery != nil {
 			mm := &manyVsOneExpr{
-				noCoalesce:   right.NoCoalesce,
+				nullFallback: right.NullFallback,
 				subQuery:     right.MultiMatchSubQuery,
 				op:           op,
 				otherOperand: left,
@@ -424,7 +424,7 @@ func resolveEqualExpr(equal bool, left, right *ResolverResult) dbx.Expression {
 	// no coalesce (eg. compare to a json field)
 	// a IS b
 	// a IS NOT b
-	if left.NoCoalesce || right.NoCoalesce {
+	if left.NullFallback == NullFallbackDisabled || right.NullFallback == NullFallbackDisabled {
 		return dbx.NewExp(
 			/* SQLite:
 			fmt.Sprintf("%s %s %s", left.Identifier, nullEqualOp, right.Identifier),
@@ -987,13 +987,13 @@ func (e *manyVsManyExpr) Build(db *dbx.DB, params dbx.Params) string {
 
 	whereExpr, buildErr := buildResolversExpr(
 		&ResolverResult{
-			NoCoalesce: e.left.NoCoalesce,
-			Identifier: "[[" + lAlias + ".multiMatchValue]]",
+			NullFallback: e.left.NullFallback,
+			Identifier:   "[[" + lAlias + ".multiMatchValue]]",
 		},
 		e.op,
 		&ResolverResult{
-			NoCoalesce: e.right.NoCoalesce,
-			Identifier: "[[" + rAlias + ".multiMatchValue]]",
+			NullFallback: e.right.NullFallback,
+			Identifier:   "[[" + rAlias + ".multiMatchValue]]",
 			// note: the AfterBuild needs to be handled only once and it
 			// doesn't matter whether it is applied on the left or right subquery operand
 			AfterBuild: dbx.Not, // inverse for the not-exist expression
@@ -1032,7 +1032,7 @@ type manyVsOneExpr struct {
 	subQuery     dbx.Expression
 	op           fexpr.SignOp
 	inverse      bool
-	noCoalesce   bool
+	nullFallback NullFallbackPreference
 }
 
 // Build converts the expression into a SQL fragment.
@@ -1046,9 +1046,9 @@ func (e *manyVsOneExpr) Build(db *dbx.DB, params dbx.Params) string {
 	alias := "__sm" + security.PseudorandomString(8)
 
 	r1 := &ResolverResult{
-		NoCoalesce: e.noCoalesce,
-		Identifier: "[[" + alias + ".multiMatchValue]]",
-		AfterBuild: dbx.Not, // inverse for the not-exist expression
+		NullFallback: e.nullFallback,
+		Identifier:   "[[" + alias + ".multiMatchValue]]",
+		AfterBuild:   dbx.Not, // inverse for the not-exist expression
 	}
 
 	r2 := &ResolverResult{
