@@ -75,7 +75,22 @@ type runSQLResult struct {
 
 var knownWriteQueryPrefixes = []string{
 	"INSERT", "CREATE", "UPDATE", "DELETE",
-	"DROP", "DETACH", "ALTER", "REPLACE",
+	"DROP", "DETACH", "ALTER", "REPLACE", "REINDEX", "VACUUM",
+}
+
+// requiresNonTransactionalExecution reports whether a PostgreSQL maintenance
+// command must run outside a transaction block. The SQL console normally wraps
+// writes in a transaction so multi-statement mutations remain atomic.
+func requiresNonTransactionalExecution(query string) bool {
+	normalized := strings.Join(strings.Fields(strings.ToUpper(query)), " ")
+
+	return strings.HasPrefix(normalized, "CREATE INDEX CONCURRENTLY ") ||
+		strings.HasPrefix(normalized, "CREATE UNIQUE INDEX CONCURRENTLY ") ||
+		strings.HasPrefix(normalized, "DROP INDEX CONCURRENTLY ") ||
+		strings.HasPrefix(normalized, "REINDEX INDEX CONCURRENTLY ") ||
+		strings.HasPrefix(normalized, "REINDEX TABLE CONCURRENTLY ") ||
+		normalized == "VACUUM" ||
+		strings.HasPrefix(normalized, "VACUUM ")
 }
 
 func executeQuery(app core.App, query string, maxRows int) (*runSQLResult, error) {
@@ -117,6 +132,21 @@ func executeQuery(app core.App, query string, maxRows int) (*runSQLResult, error
 	// assume write/mutation query
 	// ---------------------------------------------------------------
 	if isPossibleWriteQuery {
+		if requiresNonTransactionalExecution(query) {
+			execResult, err := app.NonconcurrentDB().NewQuery(query).WithContext(ctx).Execute()
+			if err != nil {
+				return nil, err
+			}
+
+			result.AffectedRows, err = execResult.RowsAffected()
+			if err != nil {
+				// non-critical error (e.g. not supported by the driver)
+				app.Logger().Debug("Unable to fetch affected rows", slog.String("error", err.Error()))
+			}
+
+			return result, nil
+		}
+
 		// auto wrap in transaction in case there are multiple inline queries
 		txErr := app.RunInTransaction(func(txApp core.App) error {
 			execResult, err := txApp.NonconcurrentDB().NewQuery(query).WithContext(ctx).Execute()
