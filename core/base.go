@@ -1600,7 +1600,7 @@ func (app *BaseApp) initLogger() error {
 		// note: based on several local tests there is no
 		// significant performance difference between small number
 		// of separate write queries vs 1 big INSERT
-		app.AuxRunInTransaction(func(txApp App) error {
+		if err := app.AuxRunInTransaction(func(txApp App) error {
 			model := &Log{}
 			for _, l := range logs {
 				model.MarkAsNew()
@@ -1611,12 +1611,17 @@ func (app *BaseApp) initLogger() error {
 				model.Created, _ = types.ParseDateTime(l.Time)
 
 				if err := txApp.AuxSave(model); err != nil {
-					log.Println("Failed to write log", model, err)
+					// PostgreSQL marks a transaction as aborted after a statement
+					// fails. Return immediately so Transactional rolls it back
+					// instead of trying the rest of the batch on that transaction.
+					return err
 				}
 			}
 
 			return nil
-		})
+		}); err != nil {
+			log.Println("Failed to write logs", err)
+		}
 	}
 
 	handler := logger.NewBatchHandler(logger.BatchOptions{
