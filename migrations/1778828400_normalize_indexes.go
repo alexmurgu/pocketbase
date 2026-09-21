@@ -28,13 +28,21 @@ func init() {
 				SQL  string `db:"sql"`
 			}{}
 
-			err := txApp.DB().Select("name", "sql").
-				From("sqlite_master").
+			err := txApp.DB().Select("indexname AS name", "indexdef AS sql").
+				From("pg_indexes").
 				AndWhere(dbx.HashExp{
-					"type":     "index",
-					"tbl_name": collection.Name,
+					"tablename": collection.Name,
 				}).
-				AndWhere(dbx.NewExp("sql IS NOT NULL AND name NOT LIKE 'sqlite_autoindex_%'")).
+				AndWhere(dbx.NewExp("schemaname = current_schema()")).
+				// PostgreSQL exposes indexes backing primary keys and unique
+				// constraints through pg_indexes too. They are managed by the
+				// constraint and must not be normalized as collection indexes.
+				AndWhere(dbx.NewExp(`indexname NOT IN (
+					SELECT i.relname
+					FROM pg_index ix
+					JOIN pg_class i ON i.oid = ix.indexrelid
+					JOIN pg_constraint c ON c.conindid = ix.indexrelid
+				)`)).
 				All(&masterIndexes)
 			if err != nil {
 				return err
@@ -72,7 +80,7 @@ func init() {
 
 				// it shouldn't be possible but for just in case if there is an edge case the regex doesn't cover
 				if missingSQL == "" {
-					return fmt.Errorf("failed to build sqlite_master index: %v", missing)
+					return fmt.Errorf("failed to build database index: %v", missing)
 				}
 
 				// drop the missing index to recreate later

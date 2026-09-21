@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	indexRegex       = regexp.MustCompile(`(?i)\s*create\s+(unique\s+)?\s*index\s*(if\s+not\s+exists\s+)?(\S*)\s+on\s+(\S*)\s*\(([\s\S]*?)\)(?:\s+where\s+([\s\S]*?))?\s*$`)
+	indexRegex       = regexp.MustCompile(`(?i)\s*create\s+(unique\s+)?\s*index\s*(if\s+not\s+exists\s+)?(\S*)\s+on\s+(\S*)(?:\s+using\s+\w+)?\s*\(([\s\S]*?)\)(?:\s+where\s+([\s\S]*?))?\s*$`)
 	indexColumnRegex = regexp.MustCompile(`(?i)^([\s\S]+?)(?:\s+collate\s+([\w]+))?(?:\s+(asc|desc))?\s*$`)
 )
 
