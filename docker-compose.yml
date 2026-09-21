@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: pocketbase
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pocketbase}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pocketbase -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  pocketbase:
+    image: ghcr.io/alexmurgu/pocketbase:v0.40.4-postgres
+    ports:
+      - "8090:8090"
+    environment:
+      PB_HTTP_ADDR: 0.0.0.0:8090
+      PB_DATA_DIR: /data
+      POSTGRES_URL: postgres://pocketbase:${POSTGRES_PASSWORD:-pocketbase}@postgres:5432/postgres?sslmode=disable
+    volumes:
+      - pocketbase_data:/data
+      # Uncomment to load custom JavaScript hooks from ./pb_hooks.
+      # - ./pb_hooks:/pb_hooks:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pocketbase_data:
