@@ -22,6 +22,11 @@ See: [pocketbase/pocketbase](https://github.com/pocketbase/pocketbase)
 
 **Deploy with Docker**
 
+Published images use two tags:
+
+- `ghcr.io/alexmurgu/pocketbase:postgres` tracks the current `postgres` branch.
+- `ghcr.io/alexmurgu/pocketbase:v0.40.4-postgres` is the pinned PocketBase v0.40.4 PostgreSQL release.
+
 1. Start PostgreSQL:
 
    ```sh
