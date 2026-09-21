@@ -1,33 +1,32 @@
 # PocketBase with PostgreSQL
 
-This is a direct fork of [PocketBase](https://github.com/pocketbase/pocketbase) with PostgreSQL support for PocketBase data, logs, realtime bridging, and backups.
+This direct fork of [PocketBase](https://github.com/pocketbase/pocketbase) stores PocketBase data and logs in PostgreSQL. It also supports the realtime bridge and PostgreSQL backups.
 
-**Features**
+## Features
 
 - PostgreSQL 17+ support
-- Horizontal scaling with realtime events
-- PostgreSQL-native backups using `pg_dump`
-- Compatible with the current PocketBase SDKs and documentation
+- Realtime events across multiple instances
+- Backups created with `pg_dump`
 
-**Get Started**
+## Run PocketBase
 
-Everything works like the upstream PocketBase project, with `POSTGRES_URL` required to connect the PostgreSQL backend.
+Set `POSTGRES_URL` before starting PocketBase.
 
 ```sh
 export POSTGRES_URL=postgres://user:pass@127.0.0.1:5432/postgres?sslmode=disable
 ./pocketbase serve
 ```
 
-See: [pocketbase/pocketbase](https://github.com/pocketbase/pocketbase)
+For PocketBase documentation, see [pocketbase/pocketbase](https://github.com/pocketbase/pocketbase).
 
-**Deploy with Docker**
+## Run with Docker
 
-Published images use two tags:
+Published images have two tags:
 
-- `ghcr.io/alexmurgu/pocketbase:postgres` tracks the current `postgres` branch.
-- `ghcr.io/alexmurgu/pocketbase:v0.40.4-postgres` is the pinned PocketBase v0.40.4 PostgreSQL release.
+- `ghcr.io/alexmurgu/pocketbase:postgres` tracks the `postgres` branch.
+- `ghcr.io/alexmurgu/pocketbase:v0.40.4-postgres` pins PocketBase v0.40.4.
 
-For a complete local setup, copy the environment template, choose a strong URL-safe password, and run the included [Compose configuration](docker/docker-compose.yml):
+For a local deployment, copy the environment template and set a strong URL-safe password.
 
 ```sh
 cd docker
@@ -36,9 +35,11 @@ cp .env.example .env
 docker compose up -d
 ```
 
-PocketBase will be available at `http://localhost:8090`.
+PocketBase listens on `http://localhost:8090`.
 
-1. Start PostgreSQL:
+To run the containers individually:
+
+1. Start PostgreSQL.
 
    ```sh
    docker run -d \
@@ -50,7 +51,7 @@ PocketBase will be available at `http://localhost:8090`.
      postgres:alpine
    ```
 
-2. Start PocketBase. Use a pinned image tag in production:
+2. Start PocketBase. Use a versioned image tag in production.
 
    ```sh
    docker run -d \
@@ -63,12 +64,13 @@ PocketBase will be available at `http://localhost:8090`.
      ghcr.io/alexmurgu/pocketbase:v0.40.4-postgres
    ```
 
-3. Get admin password reset link
+3. Get the superuser password-reset link.
    ```sh
    docker logs -f pocketbase
    ```
 
-**Available Environment Variables**
+## Environment variables
+
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
 | `POSTGRES_URL` | PostgreSQL connection URL (required) | required |
@@ -77,21 +79,20 @@ PocketBase will be available at `http://localhost:8090`.
 | `PB_DATA_DIR` | Directory to store the PocketBase data | `./pb_data` |
 | `PB_PUBLIC_DIR` | Directory to store the public files | `./pb_public` |
 | `PB_HOOKS_DIR` | Directory to store the custom hooks | `./pb_hooks` |
-| `PB_REALTIME_BRIDGE` | Enable/Disable the realtime bridge. Disable it if you don't need horizontal scaling or don't need realtime feature. | `true` |
-| `PB_HTTP_ADDR` | TCP address to listen for the HTTP server | `127.0.0.1:8090` if no domain specified |
+| `PB_REALTIME_BRIDGE` | Enables the realtime bridge. Set it to `false` when running one instance or without realtime events. | `true` |
+| `PB_HTTP_ADDR` | HTTP listen address | `127.0.0.1:8090` when no domain is set |
 | `PB_HTTPS_ADDR` | TCP address to listen for the HTTPS server | - |
-| `PB_PATH_PREFIX` | URL path prefix for the HTTP server (Useful when reuse same domain for diffrent sites behind nginx) | - |
-| `PB_ALLOWED_ORIGINS` | Comma separated list of allowed CORS origins | `*` (all origins) |
+| `PB_PATH_PREFIX` | HTTP URL prefix, useful behind a reverse proxy | - |
+| `PB_ALLOWED_ORIGINS` | Comma-separated CORS origins | `*` (all origins) |
 
-**Limitations**
+## Notes
 
-- Local file system is not synced across multiple instances.
-  > You need to add a S3 storage account if you are deploying multiple instances and need the file upload feature.
-- PostgreSQL backups are created with `pg_dump` and stored in the PocketBase backup archive. Restore the database dumps with `pg_restore` in a controlled maintenance window.
+- Local files are not shared between instances. Use S3-compatible storage when multiple instances accept uploads.
+- Backups contain PostgreSQL dumps created with `pg_dump`. Restore them with `pg_restore` during a maintenance window.
 
-**Contributing**
+## Contributing
 
-For PostgreSQL-fork issues and improvements, open an issue or pull request in this repository. For upstream PocketBase functionality, please contribute to [pocketbase/pocketbase](https://github.com/pocketbase/pocketbase).
+Report PostgreSQL fork issues here. Contribute upstream PocketBase changes to [pocketbase/pocketbase](https://github.com/pocketbase/pocketbase).
 
 ---
 

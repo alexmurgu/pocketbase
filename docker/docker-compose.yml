@@ -24,7 +24,7 @@ services:
       POSTGRES_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
     volumes:
       - pocketbase_data:/data
-      # Uncomment to load custom JavaScript hooks from ./pb_hooks.
+      # Uncomment the next line to mount custom JavaScript hooks from ./pb_hooks.
       # - ./pb_hooks:/pb_hooks:ro
     depends_on:
       postgres:

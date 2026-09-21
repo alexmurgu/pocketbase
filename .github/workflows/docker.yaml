@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Immutable image tag to publish alongside postgres (for example, v0.40.4-postgres)
+        description: Version tag to publish with postgres, for example v0.40.4-postgres
         required: true
         type: string
 
