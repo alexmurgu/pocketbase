@@ -28,7 +28,7 @@ func init() {
 			*/
 			_, execErr := txApp.AuxDB().NewQuery(`
 				CREATE TABLE IF NOT EXISTS {{_logs}} (
-					[[id]]      UUID PRIMARY KEY DEFAULT uuid_generate_v7() NOT NULL,
+					[[id]]      TEXT PRIMARY KEY NOT NULL,
 					[[level]]   INTEGER DEFAULT 0 NOT NULL,
 					[[message]] TEXT DEFAULT '' NOT NULL,
 					[[data]]    JSONB DEFAULT '{}' NOT NULL,
