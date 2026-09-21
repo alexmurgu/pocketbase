@@ -2,6 +2,17 @@ import { settingsSidebar } from "../settingsSidebar";
 
 const SQL_HISTORY_STORAGE_KEY = "pbSQLConsoleHistory";
 
+const TABLE_SIZES_QUERY = `SELECT
+    relname AS table_name,
+    pg_size_pretty(pg_total_relation_size(oid)) AS total_size,
+    pg_size_pretty(pg_relation_size(oid)) AS table_size,
+    pg_size_pretty(pg_indexes_size(oid)) AS index_size
+FROM pg_class
+WHERE relkind = 'r'
+    AND relnamespace = 'public'::regnamespace
+ORDER BY pg_total_relation_size(oid) DESC
+LIMIT 20;`;
+
 export function pageSQLConsole(route) {
     app.store.title = "SQL console";
 
@@ -136,6 +147,11 @@ export function pageSQLConsole(route) {
                 pageData.errorMsg = err?.response?.message || err?.message || "Failed to execute query.";
             }
         }
+    }
+
+    function executeTableSizesQuery() {
+        pageData.query = TABLE_SIZES_QUERY;
+        return executeSQL();
     }
 
     function removeFromHistory(query) {
@@ -284,6 +300,16 @@ export function pageSQLConsole(route) {
                 ),
                 t.div(
                     { className: "page-header-primary-btns" },
+                    t.button(
+                        {
+                            type: "button",
+                            className: () => `btn expanded-lg secondary ${pageData.isExecuting ? "loading" : ""}`,
+                            disabled: () => pageData.isExecuting,
+                            onclick: () => executeTableSizesQuery(),
+                        },
+                        t.i({ className: "ri-database-2-line", ariaHidden: true }),
+                        t.span({ className: "txt" }, "Table sizes"),
+                    ),
                     t.button(
                         {
                             type: "button",
