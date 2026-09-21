@@ -38,17 +38,18 @@ func PostgresDBConnectFunc(connectionString string) DBConnectFunc {
 
 	return func(dbName string) (*dbx.DB, error) {
 		fmt.Println("Connecting to DB:", dbName)
-		// clone url and replace the db name
-		urlClone := *url
-		urlClone.Path = dbName
-		db, err := dbx.MustOpen("pgx", urlClone.String())
+		dbURL, err := postgresDatabaseURL(url.String(), dbName)
+		if err != nil {
+			return nil, err
+		}
+		db, err := dbx.MustOpen("pgx", dbURL)
 		if err != nil && regexp.MustCompile(`database ".+" does not exist`).MatchString(err.Error()) {
 			fmt.Println("Database not found, creating:", dbName)
 			if err := createDatabase(connectionString, dbName); err != nil {
 				return nil, fmt.Errorf("Failed to create database [%s]: %s, please create it manually", dbName, err)
 			}
 			fmt.Println("Database created, reconnecting:", dbName)
-			db, err = dbx.MustOpen("pgx", urlClone.String())
+			db, err = dbx.MustOpen("pgx", dbURL)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to connect to Postgres: %s", err)
@@ -56,6 +57,20 @@ func PostgresDBConnectFunc(connectionString string) DBConnectFunc {
 
 		return db, nil
 	}
+}
+
+// postgresDatabaseURL returns connectionString targeting database.
+func postgresDatabaseURL(connectionString, database string) (string, error) {
+	u, err := url.Parse(connectionString)
+	if err != nil {
+		return "", fmt.Errorf("invalid connection string: %w", err)
+	}
+	if u.Scheme != "postgres" && u.Scheme != "postgresql" {
+		return "", fmt.Errorf("invalid connection string scheme: %q", u.Scheme)
+	}
+
+	u.Path = database
+	return u.String(), nil
 }
 
 func createDatabase(connectionString string, dbName string) error {

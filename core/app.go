@@ -69,6 +69,15 @@ type App interface {
 	// DataDir returns the app data directory path.
 	DataDir() string
 
+	// PostgresURL returns the configured PostgreSQL connection URL.
+	PostgresURL() string
+
+	// PostgresDataDB returns the configured main PostgreSQL database name.
+	PostgresDataDB() string
+
+	// PostgresAuxDB returns the configured auxiliary PostgreSQL database name.
+	PostgresAuxDB() string
+
 	// EncryptionEnv returns the name of the app secret env key
 	// (currently used primarily for optional settings encryption but this may change in the future).
 	EncryptionEnv() string

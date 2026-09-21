@@ -10,7 +10,7 @@ RUN cd examples/base && go build -o pocketbase ./
 
 # Build the final image
 FROM alpine:latest
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates postgresql-client
 
 # Copy pocketbase binary from the builder stage
 COPY --from=builder-golang /directory-to-build-golang-app/examples/base/pocketbase /pb/pocketbase

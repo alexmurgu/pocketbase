@@ -137,7 +137,14 @@ func (app *BaseApp) RestoreBackup(ctx context.Context, name string) error {
 			}
 		}
 
-		// ensure that at least a database file exists
+		// PostgreSQL backups contain pg_dump archives. Restoring two independent
+		// databases while the application is running is not atomic, so it must be
+		// performed as a controlled maintenance operation with pg_restore.
+		if _, err := os.Stat(filepath.Join(extractedDataDir, postgresDataDumpFilename)); err == nil {
+			return errors.New("PostgreSQL backup restore is not supported from the dashboard; restore data.dump and auxiliary.dump with pg_restore during maintenance")
+		}
+
+		// ensure that at least a SQLite database file exists for legacy archives
 		extractedDB := filepath.Join(extractedDataDir, "data.db")
 		if _, err := os.Stat(extractedDB); err != nil {
 			return fmt.Errorf("data.db file is missing or invalid: %w", err)

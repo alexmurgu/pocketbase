@@ -662,6 +662,11 @@ func (app *BaseApp) DataDir() string {
 	return app.config.DataDir
 }
 
+// PostgresURL returns the configured PostgreSQL connection URL.
+func (app *BaseApp) PostgresURL() string {
+	return app.config.PostgresURL
+}
+
 // PostgresDataDB returns the name of the main data db (default `data`) used by the app.
 func (app *BaseApp) PostgresDataDB() string {
 	return app.config.PostgresDataDB
@@ -1533,19 +1538,14 @@ func (app *BaseApp) registerBaseHooks() {
 	})
 
 	app.Cron().Add("__pbDBOptimize__", "0 0 * * *", func() {
-		_, execErr := app.NonconcurrentDB().NewQuery("PRAGMA wal_checkpoint(TRUNCATE)").Execute()
+		_, execErr := app.NonconcurrentDB().NewQuery("ANALYZE").Execute()
 		if execErr != nil {
-			app.Logger().Warn("Failed to run periodic PRAGMA wal_checkpoint for the main DB", slog.String("error", execErr.Error()))
+			app.Logger().Warn("Failed to run periodic ANALYZE for the main DB", slog.String("error", execErr.Error()))
 		}
 
-		_, execErr = app.AuxNonconcurrentDB().NewQuery("PRAGMA wal_checkpoint(TRUNCATE)").Execute()
+		_, execErr = app.AuxNonconcurrentDB().NewQuery("ANALYZE").Execute()
 		if execErr != nil {
-			app.Logger().Warn("Failed to run periodic PRAGMA wal_checkpoint for the auxiliary DB", slog.String("error", execErr.Error()))
-		}
-
-		_, execErr = app.NonconcurrentDB().NewQuery("PRAGMA optimize").Execute()
-		if execErr != nil {
-			app.Logger().Warn("Failed to run periodic PRAGMA optimize", slog.String("error", execErr.Error()))
+			app.Logger().Warn("Failed to run periodic ANALYZE for the auxiliary DB", slog.String("error", execErr.Error()))
 		}
 	})
 
