@@ -27,10 +27,13 @@ Published images use two tags:
 - `ghcr.io/alexmurgu/pocketbase:postgres` tracks the current `postgres` branch.
 - `ghcr.io/alexmurgu/pocketbase:v0.40.4-postgres` is the pinned PocketBase v0.40.4 PostgreSQL release.
 
-For a complete local setup, choose a strong URL-safe `POSTGRES_PASSWORD` and run the included [`docker-compose.yml`](docker-compose.yml):
+For a complete local setup, copy the environment template, choose a strong URL-safe password, and run the included [Compose configuration](docker/docker-compose.yml):
 
 ```sh
-POSTGRES_PASSWORD=replace-with-a-strong-url-safe-password docker compose up -d
+cd docker
+cp .env.example .env
+# Edit .env and set POSTGRES_PASSWORD.
+docker compose up -d
 ```
 
 PocketBase will be available at `http://localhost:8090`.
