@@ -165,10 +165,6 @@ func (f *TextField) ColumnType(app App) string {
 		// note: the default is just a last resort fallback to avoid empty
 		// string values in case the record was inserted with raw sql and
 		// it is not actually used when operating with the db abstraction
-		/* SQLite:
-		return "TEXT PRIMARY KEY DEFAULT ('r'||lower(hex(randomblob(7)))) NOT NULL"
-		*/
-		// PostgreSQL:
 		if f.Pattern == security.PredefinedAutoGeneratePattern_uuidv7 {
 			return "UUID PRIMARY KEY DEFAULT uuid_generate_v7() NOT NULL"
 		}

@@ -28,8 +28,8 @@ func Register(
 
 func init() {
 	core.SystemMigrations.Register(func(txApp core.App) error {
-		if err := createSQLiteEquivalentFunctions(txApp.DB()); err != nil {
-			return fmt.Errorf("createSQLiteEquivalentFunctions error: %w", err)
+		if err := createPostgresCompatibilityFunctions(txApp.DB()); err != nil {
+			return fmt.Errorf("createPostgresCompatibilityFunctions error: %w", err)
 		}
 
 		if err := createParamsTable(txApp); err != nil {
@@ -126,17 +126,6 @@ func init() {
 }
 
 func createParamsTable(txApp core.App) error {
-	/* SQLite:
-	_, execErr := txApp.DB().NewQuery(`
-		CREATE TABLE {{_params}} (
-			[[id]]      TEXT PRIMARY KEY DEFAULT ('r'||lower(hex(randomblob(7)))) NOT NULL,
-			[[value]]   JSON DEFAULT NULL,
-			[[created]] TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%fZ')) NOT NULL,
-			[[updated]] TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%fZ')) NOT NULL
-		);
-	`).Execute()
-	*/
-	// PostgreSQL:
 	_, execErr := txApp.DB().NewQuery(`
 		CREATE TABLE {{_params}} (
 			[[id]]      TEXT PRIMARY KEY DEFAULT ('r'||lower(hex(randomblob(7)))) NOT NULL,

@@ -15,9 +15,8 @@ import (
 	"github.com/pocketbase/pocketbase/tools/list"
 )
 
-// Backup in SQLite just copies the data.db file.
-// But for PostgreSQL, there are many good tools: postgres-backup-s3 or pgbackrest
-// So we disable it.
+// For PostgreSQL, database backups are managed via tools like postgres-backup-s3 or pgbackrest.
+// These tests are disabled.
 func disabled_TestCreateBackup(t *testing.T) {
 	app, _ := tests.NewTestApp()
 	defer app.Cleanup()
@@ -85,9 +84,8 @@ func disabled_TestCreateBackup(t *testing.T) {
 	}
 }
 
-// Backup in SQLite just copies the data.db file.
-// But for PostgreSQL, there are many good tools: postgres-backup-s3 or pgbackrest
-// So we disable it.
+// For PostgreSQL, database backups are managed via tools like postgres-backup-s3 or pgbackrest.
+// These tests are disabled.
 func disabled_TestRestoreBackup(t *testing.T) {
 	app, _ := tests.NewTestApp()
 	defer app.Cleanup()

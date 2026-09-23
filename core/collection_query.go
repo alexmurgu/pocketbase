@@ -38,13 +38,7 @@ func (app *BaseApp) FindAllCollections(collectionTypes ...string) ([]*Collection
 		q.AndWhere(dbx.In("type", list.ToInterfaceSlice(types)...))
 	}
 
-	/* SQLite:
-	err := q.OrderBy("rowid ASC").All(&collections)
-	*/
-	// PostgreSQL:
-	// Sorting the columns by ctid just to provide a relatively more stable result.
-	// The order of collections may change because of ctid changing during as time goes by.
-	// The result is not guaranteed to be the same as when they inserted to database.
+	// Sorting the collections by ctid to provide a relatively stable order.
 	err := q.OrderBy("ctid ASC").All(&collections)
 	if err != nil {
 		return nil, err
@@ -279,27 +273,13 @@ func saveViewCollection(app App, newCollection, oldCollection *Collection) error
 			return err
 		}
 
-		/* SQLite:
-		// delete old renamed view
-		if oldCollection != nil {
-			if err := txApp.DeleteView(oldCollection.Name); err != nil {
-				return err
-			}
-		}
-		*/
-		// PostgreSQL:
 		// Note:
-		// 1. When we rename a table or a view, both SQLite and PostgreSQL will update
-		//    all other views that depends on it by modifier their DDL SQL.
-		// 2. Why do we need to rename the old view? Because we need to find all the dependent views
-		//    and their DDL SQL by running `findDependentViews` function. If we don't rename
-		// 	  before getting the DDL SQL, then these DDL will still reference the old view name.
-		// 3. In SQLite we don't have the problem, because we won't drop all the dependent views when
-		// 	  we modify a view. But in PostgreSQL we will drop all the dependent views and then restore it.
-		// 4. Why do we need to drop all dependent views in PostgreSQL? Because we need to update the view,
-		//    although there is a `CREATE OR REPLACE VIEW` statement, but it forbids us to remove any column
-		//    from the view. So we need to drop the view. And we we drop the view, we also need to drop all
-		//    the dependent views otherwise PostgreSQL will complain too.
+		// 1. When we rename a table or a view, PostgreSQL will update all other views that depend on it
+		//    by modifying their DDL SQL.
+		// 2. We rename the old view before querying dependent views with `findDependentViews` so that
+		//    the dependent view DDL definitions reference the updated name.
+		// 3. PostgreSQL requires dropping dependent views before dropping or recreating a modified view
+		//    if any columns change, and then restoring them.
 		if oldCollection != nil && oldCollection.Name != newCollection.Name {
 			if _, err := txApp.DB().RenameTable(oldCollection.Name, newCollection.Name).Execute(); err != nil {
 				return err

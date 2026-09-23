@@ -2,9 +2,9 @@ package migrations
 
 import "github.com/pocketbase/dbx"
 
-func createSQLiteEquivalentFunctions(db dbx.Builder) error {
-	//PostgreSQL:
-	// 1. Check existance
+func createPostgresCompatibilityFunctions(db dbx.Builder) error {
+	// PostgreSQL:
+	// 1. Check existence
 	sql := `SELECT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'uuid_generate_v7');`
 	var exists bool
 	if err := db.NewQuery(sql).Row(&exists); err != nil {
@@ -14,13 +14,12 @@ func createSQLiteEquivalentFunctions(db dbx.Builder) error {
 		return nil
 	}
 
-	// Postgres:
 	// 2. Create function
 	funcDef := `
 	-- Enable built-in pgcrypto extension to use gen_random_bytes function
 	CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
-	-- Adding "nocase" collation to be compatible with SQLite's built-in "nocase" collation
+	-- Adding "nocase" collation for case-insensitive comparisons
 	CREATE COLLATION IF NOT EXISTS "nocase" (
 		provider = icu,          -- Specify ICU as the provider
 		locale = 'und-u-ks-level2', -- Undetermined locale, Unicode extension (-u-), collation strength (ks) level 2 (level2)

@@ -1464,7 +1464,7 @@ func onRecordSaveExecute(e *RecordEvent) error {
 		}
 		for _, collection := range authCollections {
 			if e.Record.Collection().Id == collection.Id {
-				continue // skip current collection (sqlite will do the check for us)
+				continue // skip current collection (the database will do the check for us)
 			}
 			record, _ := e.App.FindRecordById(collection, e.Record.Id)
 			if record != nil {
@@ -1491,7 +1491,7 @@ func onRecordDeleteExecute(e *RecordEvent) error {
 	// fetch rel references (if any)
 	//
 	// note: the select is outside of the transaction to minimize
-	// SQLITE_BUSY errors when mixing read&write in a single transaction
+	// transaction deadlocks when mixing read&write in a single transaction
 	refs, err := e.App.FindCachedCollectionReferences(e.Record.Collection())
 	if err != nil {
 		return err
@@ -1547,16 +1547,6 @@ func cascadeRecordDelete(app App, mainRecord *Record, refs map[*Collection][]Fie
 			if opt, ok := field.(MultiValuer); !ok || !opt.IsMultiple() {
 				query.AndWhere(dbx.HashExp{prefixedFieldName: mainRecord.Id})
 			} else {
-				/* SQLite:
-				query.AndWhere(dbx.Exists(dbx.NewExp(fmt.Sprintf(
-					`SELECT 1 FROM json_each(CASE WHEN json_valid([[%s]]) THEN [[%s]] ELSE json_array([[%s]]) END) {{__je__}} WHERE [[__je__.value]]={:jevalue}`,
-					prefixedFieldName, prefixedFieldName, prefixedFieldName,
-				), dbx.Params{
-					"jevalue": mainRecord.Id,
-				})))
-				*/
-				// `SELECT 1 FROM %s {{__je__}} WHERE [[__je__.value]]::text={:jevalue}`,
-				// PostgreSQL:
 				query.AndWhere(dbutils.JsonArrayExistsStr(prefixedFieldName, mainRecord.Id))
 			}
 

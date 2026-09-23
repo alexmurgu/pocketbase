@@ -348,7 +348,7 @@ func (app *BaseApp) registerCollectionHooks() {
 }
 
 // @todo experiment eventually replacing the rules *string with a struct?
-// @todo consider changing the Indexes field to a "getter" for the sqlite_master table?
+// @todo consider changing the Indexes field to a "getter" for the table indexes?
 type baseCollection struct {
 	BaseModel
 
@@ -651,26 +651,6 @@ func (m *Collection) AddIndex(name string, unique bool, columnsExpr string, optW
 
 	var idx strings.Builder
 
-	/* SQLite:
-	idx.WriteString("CREATE ")
-	if unique {
-		idx.WriteString("UNIQUE ")
-	}
-	idx.WriteString("INDEX `")
-	idx.WriteString(name)
-	idx.WriteString("` ")
-	idx.WriteString("ON `")
-	idx.WriteString(m.Name)
-	idx.WriteString("` (")
-	idx.WriteString(columnsExpr)
-	idx.WriteString(")")
-	if optWhereExpr != "" {
-		idx.WriteString(" WHERE ")
-		idx.WriteString(optWhereExpr)
-	}
-	*/
-
-	// PostgreSQL:
 	idx.WriteString("CREATE ")
 	if unique {
 		idx.WriteString("UNIQUE ")
@@ -717,7 +697,7 @@ func onCollectionDeleteExecute(e *CollectionEvent) error {
 
 	if !e.Collection.disableIntegrityChecks {
 		// ensure that there aren't any existing references.
-		// note: the select is outside of the transaction to prevent SQLITE_LOCKED error when mixing read&write in a single transaction
+		// note: the select is outside of the transaction to prevent transaction deadlocks when mixing read&write in a single transaction
 		references, err := e.App.FindCollectionReferences(e.Collection, e.Collection.Id)
 		if err != nil {
 			return fmt.Errorf("[%s] failed to check collection references: %w", e.Collection.Name, err)
@@ -737,14 +717,12 @@ func onCollectionDeleteExecute(e *CollectionEvent) error {
 		e.App = txApp
 
 		// protect against deleting a collection that is depended on by other views
-		// Unlike SQLite, PostgreSQL doesn't allow deleting a table if there are any dependencies on it.
 		dependentViews, err := findDependentViews(txApp, e.Collection.Name)
 		if err != nil {
 			return err
 		}
 		if e.Collection.disableIntegrityChecks {
-			// drop the dependent views to bypass PostgreSQL's dependency check
-			// Note: In SQLite, we don't have to delete the dependent views because SQLite allows dangling views.
+			// drop the dependent views because PostgreSQL does not allow dangling view dependencies.
 			// These views will be created by [resaveViewsWithChangedFields] if the collection is recreated.
 			// Users can still manually edit the views through UI.
 			for i := len(dependentViews) - 1; i >= 0; i-- {
@@ -934,16 +912,7 @@ func onCollectionSaveExecute(e *CollectionEvent) error {
 				return err
 			}
 
-			/* SQLite:
-			// delete old renamed view
-			if oldCollection != nil {
-				if err := e.App.DeleteView(oldCollection.Name); err != nil {
-					return err
-				}
-			}
-			*/
-			// PostgreSQL:
-			// Instead of deleting the old view, we must rename it to make all the dependent views get updated
+			// Instead of deleting the old view, we rename it so dependent views get updated
 			// automatically.
 			if oldCollection != nil && oldCollection.Name != e.Collection.Name {
 				if _, err := txApp.DB().RenameTable(oldCollection.Name, e.Collection.Name).Execute(); err != nil {
@@ -1091,10 +1060,6 @@ func (c *Collection) initTokenKeyField() {
 	// ensure that there is a unique index for the field
 	if _, ok := dbutils.FindSingleColumnUniqueIndex(c.Indexes, FieldNameTokenKey); !ok {
 		c.Indexes = append(c.Indexes, fmt.Sprintf(
-			/* SQLite:
-			"CREATE UNIQUE INDEX `%s` ON `%s` (`%s`)",
-			*/
-			// PostgreSQL:
 			`CREATE UNIQUE INDEX "%s" ON "%s" ("%s")`,
 			c.fieldIndexName(FieldNameTokenKey),
 			c.Name,
@@ -1121,10 +1086,6 @@ func (c *Collection) initEmailField() {
 	// ensure that there is a unique index for the email field
 	if _, ok := dbutils.FindSingleColumnUniqueIndex(c.Indexes, FieldNameEmail); !ok {
 		c.Indexes = append(c.Indexes, fmt.Sprintf(
-			/* SQLite:
-			"CREATE UNIQUE INDEX `%s` ON `%s` (`%s`) WHERE `%s` != ''",
-			*/
-			// PostgreSQL:
 			`CREATE UNIQUE INDEX "%s" ON "%s" ("%s") WHERE "%s" != ''`,
 			c.fieldIndexName(FieldNameEmail),
 			c.Name,

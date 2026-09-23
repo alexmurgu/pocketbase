@@ -118,14 +118,6 @@ func TestSyncRecordTableSchema(t *testing.T) {
 func getTotalViews(app core.App) (int, error) {
 	var total int
 
-	/* SQLite:
-	err := app.DB().Select("count(*)").
-		From("sqlite_master").
-		AndWhere(dbx.NewExp("sql is not null")).
-		AndWhere(dbx.HashExp{"type": "view"}).
-		Row(&total)
-	*/
-	// PostgreSQL:
 	// count user created views.
 	err := app.DB().Select("count(*)").
 		From("information_schema.views").
@@ -188,16 +180,6 @@ func TestSingleVsMultipleValuesNormalization(t *testing.T) {
 	}
 
 	tableInfoExpectations := map[string]string{
-		/* SQLite:
-		"select_one":   `'[]'`,
-		"select_many":  `''`,
-		"file_one":     `'[]'`,
-		"file_many":    `''`,
-		"rel_one":      `'[]'`,
-		"rel_many":     `''`,
-		"new_multiple": `'[]'`,
-		*/
-		// PostgreSQL:
 		"select_one":   `'[]'::jsonb`, // maxSelect=2, json type
 		"select_many":  `''::text`,    // maxSelect=1, text type
 		"file_one":     `'[]'::jsonb`, // maxSelect=2, json type

@@ -30,11 +30,7 @@ func TestSortFieldBuildExpr(t *testing.T) {
 		{search.SortField{"test1", search.SortDesc}, false, "[[test1]] DESC"},
 		// special @random field (ignore direction)
 		{search.SortField{"@random", search.SortDesc}, false, "RANDOM()"},
-		// special _rowid_ field
-		/* SQLite:
-		{search.SortField{"@rowid", search.SortDesc}, false, "[[_rowid_]] DESC"},
-		*/
-		// PostgreSQL:
+		// special _rowid_ field (PostgreSQL ctid)
 		{search.SortField{"@rowid", search.SortDesc}, false, "[[ctid]] DESC"},
 	}
 

@@ -15,9 +15,9 @@ func ensureNoTempViews(app core.App, t *testing.T) {
 	var total int
 
 	err := app.DB().Select("count(*)").
-		From("sqlite_schema").
-		AndWhere(dbx.HashExp{"type": "view"}).
-		AndWhere(dbx.NewExp(`[[name]] LIKE '%\_temp\_%' ESCAPE '\'`)).
+		From("information_schema.views").
+		AndWhere(dbx.NotIn("table_schema", "pg_catalog", "information_schema")).
+		AndWhere(dbx.NewExp(`[[table_name]] LIKE '%\_temp\_%' ESCAPE '\'`)).
 		Limit(1).
 		Row(&total)
 	if err != nil {

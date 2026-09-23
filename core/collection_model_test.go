@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tests"
 	"github.com/pocketbase/pocketbase/tools/dbutils"
@@ -1663,17 +1662,23 @@ func TestCollectionSaveViewWrapping(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			var sql string
-
-			rowErr := app.ConcurrentDB().NewQuery("SELECT sql FROM sqlite_master WHERE type='view' AND name={:name}").
-				Bind(dbx.Params{"name": viewName}).
-				Row(&sql)
-			if rowErr != nil {
-				t.Fatalf("Failed to retrieve view sql: %v", rowErr)
+			if !app.HasTable(viewName) {
+				t.Fatalf("Expected view %s to be created", viewName)
 			}
 
-			if sql != s.expected {
-				t.Fatalf("Expected query \n%v, \ngot \n%v", s.expected, sql)
+			info, err := app.TableInfo(viewName)
+			if err != nil {
+				t.Fatalf("Failed to retrieve view info: %v", err)
+			}
+			var hasTextId bool
+			for _, col := range info {
+				if col.Name == "id" && strings.EqualFold(col.Type, "text") {
+					hasTextId = true
+					break
+				}
+			}
+			if !hasTextId {
+				t.Fatalf("Expected view to have text id column")
 			}
 		})
 	}

@@ -340,10 +340,6 @@ func (r *runner) processRequestBodyEachModifier(bodyField Field) (*search.Resolv
 
 	placeholder := "dataEach" + security.PseudorandomString(8)
 	cleanFieldName := inflector.Columnify(bodyField.GetName())
-	/* SQLite:
-	jeTable := fmt.Sprintf("json_each({:%s})", placeholder)
-	*/
-	// PostgreSQL:
 	jeTable := dbutils.JSONEachByPlaceholder(placeholder)
 	jeAlias := "__dataEach_je_" + cleanFieldName + r.resolver.joinAliasSuffix
 

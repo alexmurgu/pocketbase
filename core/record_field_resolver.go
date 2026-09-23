@@ -387,12 +387,7 @@ func (r *RecordFieldResolver) resolveStaticRequestField(path ...string) (*search
 	if modifier == lowerModifier {
 		return &search.ResolverResult{
 			Identifier: "LOWER({:" + placeholder + "})",
-			/* SQLite:
-			Params:     dbx.Params{placeholder: resultVal},
-			*/
-			// PostgreSQL:
-			// `SELECT LOWER(1)` is valid in SQLite, but not in PostgreSQL
-			// so we need to explicitly cast the value to text
+			// Explicitly cast to string for PostgreSQL text comparison
 			Params: dbx.Params{placeholder: cast.ToString(resultVal)},
 		}, nil
 	}
@@ -412,10 +407,8 @@ func (r *RecordFieldResolver) loadCollection(collectionNameOrId string) (*Collec
 }
 
 func (r *RecordFieldResolver) registerJoin(tableName string, tableAlias string, on dbx.Expression) error {
-	// PostgreSQL only:
 	if on == nil {
-		// Note: SQLite allows join without `on` clause but PostgreSQL does not.
-		// Join without `on` clause is equivalent to `ON 1=1` clause.
+		// PostgreSQL requires an ON clause for JOINs
 		on = dbx.NewExp("1=1")
 	}
 

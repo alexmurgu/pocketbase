@@ -248,14 +248,7 @@ func (r *MigrationsRunner) initMigrationsTable() error {
 		return nil // already inited
 	}
 
-	/* SQLite:
-	rawQuery := fmt.Sprintf(
-		"CREATE TABLE IF NOT EXISTS {{%s}} (file VARCHAR(255) PRIMARY KEY NOT NULL, applied INTEGER NOT NULL)",
-		r.tableName,
-	)
-	*/
-	// PostgreSQL:
-	// the column `applied` is a int64 so we have to use BIGINT
+	// the column `applied` is a int64 so we use BIGINT
 	rawQuery := fmt.Sprintf(
 		`CREATE TABLE IF NOT EXISTS {{%s}} (file VARCHAR(255) PRIMARY KEY NOT NULL, applied BIGINT NOT NULL)`,
 		r.tableName,
