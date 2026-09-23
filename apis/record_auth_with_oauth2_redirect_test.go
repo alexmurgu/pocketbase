@@ -44,14 +44,14 @@ func TestRecordAuthWithOAuth2Redirect(t *testing.T) {
 		})
 	}
 
-	checkFailureRedirect := func(t testing.TB, app *tests.TestApp, res *http.Response) {
+	checkFailureRedirect := func(t testing.TB, _ *tests.TestApp, res *http.Response) {
 		loc := res.Header.Get("Location")
 		if !strings.Contains(loc, "/oauth2-redirect-failure") {
 			t.Fatalf("Expected failure redirect, got %q", loc)
 		}
 	}
 
-	checkSuccessRedirect := func(t testing.TB, app *tests.TestApp, res *http.Response) {
+	checkSuccessRedirect := func(t testing.TB, _ *tests.TestApp, res *http.Response) {
 		loc := res.Header.Get("Location")
 		if !strings.Contains(loc, "/oauth2-redirect-success") {
 			t.Fatalf("Expected success redirect, got %q", loc)

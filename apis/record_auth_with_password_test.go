@@ -15,7 +15,7 @@ func TestRecordAuthWithPassword(t *testing.T) {
 
 	updateIdentityIndex := func(collectionIdOrName string, fieldCollateMap map[string]string) func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
 		return func(t testing.TB, app *tests.TestApp, e *core.ServeEvent) {
-			collection, err := app.FindCollectionByNameOrId("clients")
+			collection, err := app.FindCollectionByNameOrId(collectionIdOrName)
 			if err != nil {
 				t.Fatal(err)
 			}

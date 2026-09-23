@@ -16,7 +16,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/filesystem/blob"
 )
 
-func sqlite_TestBackupsList(t *testing.T) {
+func TestBackupsList(t *testing.T) {
 	t.Parallel()
 
 	scenarios := []tests.ApiScenario{
@@ -87,7 +87,7 @@ func sqlite_TestBackupsList(t *testing.T) {
 	}
 }
 
-func sqlite_TestBackupsCreate(t *testing.T) {
+func TestBackupsCreate(t *testing.T) {
 	t.Parallel()
 
 	scenarios := []tests.ApiScenario{
@@ -367,7 +367,7 @@ func TestBackupUpload(t *testing.T) {
 	}
 }
 
-func sqlite_TestBackupsDownload(t *testing.T) {
+func TestBackupsDownload(t *testing.T) {
 	t.Parallel()
 
 	scenarios := []tests.ApiScenario{
@@ -506,8 +506,8 @@ func sqlite_TestBackupsDownload(t *testing.T) {
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
 				"storage/",
-				"data.db",
-				"auxiliary.db",
+				"data.dump",
+				"auxiliary.dump",
 			},
 			ExpectedEvents: map[string]int{"*": 0},
 		},
@@ -523,8 +523,8 @@ func sqlite_TestBackupsDownload(t *testing.T) {
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
 				"storage/",
-				"data.db",
-				"auxiliary.db",
+				"data.dump",
+				"auxiliary.dump",
 			},
 			ExpectedEvents: map[string]int{"*": 0},
 		},
@@ -551,8 +551,8 @@ func sqlite_TestBackupsDownload(t *testing.T) {
 			ExpectedStatus: 200,
 			ExpectedContent: []string{
 				"storage/",
-				"data.db",
-				"auxiliary.db",
+				"data.dump",
+				"auxiliary.dump",
 			},
 			ExpectedEvents: map[string]int{"*": 0},
 		},
@@ -587,7 +587,7 @@ func sqlite_TestBackupsDownload(t *testing.T) {
 	}
 }
 
-func sqlite_TestBackupsDelete(t *testing.T) {
+func TestBackupsDelete(t *testing.T) {
 	t.Parallel()
 
 	noTestBackupFilesChanges := func(t testing.TB, app *tests.TestApp) {
@@ -755,7 +755,7 @@ func sqlite_TestBackupsDelete(t *testing.T) {
 	}
 }
 
-func sqlite_TestBackupsRestore(t *testing.T) {
+func TestBackupsRestore(t *testing.T) {
 	t.Parallel()
 
 	scenarios := []tests.ApiScenario{
