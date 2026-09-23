@@ -33,9 +33,6 @@ import (
 )
 
 const (
-	/* SQLite:
-	DefaultDataMaxOpenConns int           = 120
-	*/
 	// PostgreSQL:
 	// Note: the default server side max connections limit in PostgreSQL is 100.
 	// Now: 20 Aux connections + 70 Data connections = 90 total connections.
@@ -54,9 +51,6 @@ const (
 
 	// @todo consider removing after backups refactoring
 	lostFoundDirName string = "lost+found"
-
-	dataDBFilename string = "data.db"
-	auxDBFilename  string = "auxiliary.db"
 )
 
 // FilesManager defines an interface with common methods that files manager models should implement.
@@ -559,11 +553,10 @@ func (app *BaseApp) IsRealtimeBridgeEnabled() bool {
 	return app.config.IsRealtimeBridge
 }
 
-// DB returns the default app data.db builder instance.
+// DB returns the default app data database builder instance.
 //
-// To minimize SQLITE_BUSY errors, it automatically routes the
-// SELECT queries to the underlying concurrent db pool and everything
-// else to the nonconcurrent one.
+// It automatically routes the SELECT queries to the underlying concurrent db pool
+// and everything else to the nonconcurrent one.
 //
 // For more finer control over the used connections pools you can
 // call directly ConcurrentDB() or NonconcurrentDB().
@@ -579,7 +572,7 @@ func (app *BaseApp) DB() dbx.Builder {
 	}
 }
 
-// ConcurrentDB returns the concurrent app data.db builder instance.
+// ConcurrentDB returns the concurrent app data database builder instance.
 //
 // This method is used mainly internally for executing db read
 // operations in a concurrent/non-blocking manner.
@@ -592,13 +585,13 @@ func (app *BaseApp) ConcurrentDB() dbx.Builder {
 	return app.concurrentDB
 }
 
-// NonconcurrentDB returns the nonconcurrent app data.db builder instance.
+// NonconcurrentDB returns the nonconcurrent app data database builder instance.
 //
 // The returned db instance is limited only to a single open connection,
 // meaning that it can process only 1 db operation at a time (other queries queue up).
 //
 // This method is used mainly internally and in the tests to execute write
-// (save/delete) db operations as it helps with minimizing the SQLITE_BUSY errors.
+// (save/delete) db operations.
 //
 // Most users should use simply DB() as it will automatically
 // route the query execution to ConcurrentDB() or NonconcurrentDB().
@@ -608,11 +601,10 @@ func (app *BaseApp) NonconcurrentDB() dbx.Builder {
 	return app.nonconcurrentDB
 }
 
-// AuxDB returns the app auxiliary.db builder instance.
+// AuxDB returns the app auxiliary database builder instance.
 //
-// To minimize SQLITE_BUSY errors, it automatically routes the
-// SELECT queries to the underlying concurrent db pool and everything
-// else to the nonconcurrent one.
+// It automatically routes the SELECT queries to the underlying concurrent db pool
+// and everything else to the nonconcurrent one.
 //
 // For more finer control over the used connections pools you can
 // call directly AuxConcurrentDB() or AuxNonconcurrentDB().
@@ -628,7 +620,7 @@ func (app *BaseApp) AuxDB() dbx.Builder {
 	}
 }
 
-// AuxConcurrentDB returns the concurrent app auxiliary.db builder instance.
+// AuxConcurrentDB returns the concurrent app auxiliary database builder instance.
 //
 // This method is used mainly internally for executing db read
 // operations in a concurrent/non-blocking manner.
@@ -641,13 +633,13 @@ func (app *BaseApp) AuxConcurrentDB() dbx.Builder {
 	return app.auxConcurrentDB
 }
 
-// AuxNonconcurrentDB returns the nonconcurrent app auxiliary.db builder instance.
+// AuxNonconcurrentDB returns the nonconcurrent app auxiliary database builder instance.
 //
 // The returned db instance is limited only to a single open connection,
 // meaning that it can process only 1 db operation at a time (other queries queue up).
 //
 // This method is used mainly internally and in the tests to execute write
-// (save/delete) db operations as it helps with minimizing the SQLITE_BUSY errors.
+// (save/delete) db operations.
 //
 // Most users should use simply AuxDB() as it will automatically
 // route the query execution to AuxConcurrentDB() or AuxNonconcurrentDB().
@@ -1324,18 +1316,7 @@ func (app *BaseApp) initDataDB() error {
 	concurrentDB.DB().SetMaxIdleConns(app.config.DataMaxIdleConns)
 	concurrentDB.DB().SetConnMaxIdleTime(3 * time.Minute)
 
-	/* SQLite:
-	nonconcurrentDB, err := app.config.DBConnect(app.config.PostgresDataDB)
-	if err != nil {
-		return err
-	}
-	nonconcurrentDB.DB().SetMaxOpenConns(1)
-	nonconcurrentDB.DB().SetMaxIdleConns(1)
-	nonconcurrentDB.DB().SetConnMaxIdleTime(3 * time.Minute)
-	*/
-	// PostgreSQL:
-	// Note: SQLite does not allow multiple write connections at the same time.
-	// But PostgreSQL allows. So there is no need to seperate the connections.
+	// In PostgreSQL, concurrent write connections are supported, so separate pools are not needed.
 	nonconcurrentDB := concurrentDB
 
 	if app.IsDev() {
@@ -1363,21 +1344,6 @@ func (app *BaseApp) initDataDB() error {
 	return nil
 }
 
-/* SQLite:
-var sqlLogReplacements = []struct {
-	pattern     *regexp.Regexp
-	replacement string
-}{
-	{regexp.MustCompile(`\[\[([^\[\]\{\}\.]+)\.([^\[\]\{\}\.]+)\]\]`), "`$1`.`$2`"},
-	{regexp.MustCompile(`\{\{([^\[\]\{\}\.]+)\.([^\[\]\{\}\.]+)\}\}`), "`$1`.`$2`"},
-	{regexp.MustCompile(`([^'"])?\{\{`), "$1`"},
-	{regexp.MustCompile(`\}\}([^'"])?`), "`$1"},
-	{regexp.MustCompile(`([^'"])?\[\[`), "$1`"},
-	{regexp.MustCompile(`\]\]([^'"])?`), "`$1"},
-	{regexp.MustCompile(`<nil>`), "NULL"},
-}
-*/
-// PostgreSQL:
 var sqlLogReplacements = []struct {
 	pattern     *regexp.Regexp
 	replacement string
@@ -1413,16 +1379,6 @@ func (app *BaseApp) initAuxDB() error {
 	concurrentDB.DB().SetMaxIdleConns(app.config.AuxMaxIdleConns)
 	concurrentDB.DB().SetConnMaxIdleTime(3 * time.Minute)
 
-	/* SQLite:
-	nonconcurrentDB, err := app.config.DBConnect(app.config.PostgresAuxDB)
-	if err != nil {
-		return err
-	}
-	nonconcurrentDB.DB().SetMaxOpenConns(1)
-	nonconcurrentDB.DB().SetMaxIdleConns(1)
-	nonconcurrentDB.DB().SetConnMaxIdleTime(3 * time.Minute)
-	*/
-	// PostgreSQL:
 	nonconcurrentDB := concurrentDB
 
 	app.auxConcurrentDB = concurrentDB

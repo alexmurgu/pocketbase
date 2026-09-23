@@ -112,7 +112,7 @@ func init() {
 
 				// recreate: add the missing index to the collection list and
 				// leave the user to decide whether they want to keep it or not
-				// (the index could have been previously created externally, e.g. via the sqlite3 cli)
+				// (the index could have been previously created externally, e.g. via psql or an external tool)
 				collection.Indexes = append(collection.Indexes, missingSQL)
 			}
 

@@ -112,7 +112,7 @@ Report PostgreSQL fork issues here. Contribute upstream PocketBase changes to [p
 
 [PocketBase](https://pocketbase.io) is an open source Go backend that includes:
 
-- embedded database (_SQLite_) with **realtime subscriptions**
+- database (_PostgreSQL_) with **realtime subscriptions**
 - built-in **files and users management**
 - convenient **Admin dashboard UI**
 - and simple **REST-ish API**
@@ -199,7 +199,7 @@ To build the minimal standalone executable, like the prebuilt ones in the releas
    _(or to target other platforms use `GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build`; see https://go.dev/doc/install/source#environment)_
 4. Start the created executable by running `./base serve`.
 
-Note that the supported build targets by the pure Go SQLite driver at the moment are:
+Note that PostgreSQL connectivity is provided via pure Go (`pgx`) with `CGO_ENABLED=0`, supporting all standard Go target platforms:
 
 | GOOS    | GOARCH  |
 |---------|---------|

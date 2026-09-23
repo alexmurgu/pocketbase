@@ -29,12 +29,8 @@ func (s *SortField) BuildExpr(fieldResolver FieldResolver) (string, error) {
 		return "RANDOM()", nil
 	}
 
-	// special case for the builtin SQLite rowid column
+	// special case for @rowid (maps to PostgreSQL ctid)
 	if s.Name == rowidSortKey {
-		/* SQLite:
-		return fmt.Sprintf("[[_rowid_]] %s", s.Direction), nil
-		*/
-		// PostgreSQL:
 		return fmt.Sprintf("[[ctid]] %s", s.Direction), nil
 	}
 

@@ -20,8 +20,7 @@ var TokenFunctions = map[string]func(
 	// The accepted arguments at the moment could be either a plain number or a column identifier (including NULL).
 	// If the column identifier cannot be resolved and converted to a numeric value, it resolves to NULL.
 	//
-	// Similar to the built-in SQLite functions, geoDistance doesn't apply
-	// a "match-all" constraints in case there are multiple relation fields arguments.
+	// geoDistance doesn't apply a "match-all" constraint in case there are multiple relation fields arguments.
 	// Or in other words, if a collection has "orgs" multiple relation field pointing to "orgs" collection that has "office" as "geoPoint" field,
 	// then the filter: `geoDistance(orgs.office.lon, orgs.office.lat, 1, 2) < 200`
 	// will evaluate to true if for at-least-one of the "orgs.office" records the function result in a value satisfying the condition (aka. "result < 200").
@@ -51,7 +50,7 @@ var TokenFunctions = map[string]func(
 			NullFallback: NullFallbackDisabled,
 			// the clamping is to prevent floating point rounding errors for values like
 			// "1.0002" that could occur for example when comparing identical points
-			// (see the NULL note for arccosine in https://sqlite.org/lang_mathfunc.html#overview)
+			// (arccosine is defined only on [-1, 1])
 			Identifier: `(6371 * acos(min(1, max(-1, ` +
 				`cos(radians(` + latA + `)) * cos(radians(` + latB + `)) * ` +
 				`cos(radians(` + lonB + `) - radians(` + lonA + `)) + ` +
@@ -64,20 +63,18 @@ var TokenFunctions = map[string]func(
 	// strftime(format, [timeValue, modifier1, modifier2, ...]) returns
 	// a date string formatted according to the specified format argument.
 	//
-	// It is similar to the builtin SQLite strftime function (https://sqlite.org/lang_datefunc.html)
-	// with the main difference that NULL results will be normalized for
-	// consistency with the non-nullable PocketBase "text" and "date" fields.
+	// It follows the strftime format specification with the main difference that
+	// NULL results will be normalized for consistency with the non-nullable PocketBase
+	// "text" and "date" fields.
 	//
 	// The function accepts 1, 2 or 3+ arguments.
 	//
-	// (1) The first (format) argument must be always a formatting string
-	// with valid substitutions as listed in https://sqlite.org/lang_datefunc.html.
+	// (1) The first (format) argument must always be a formatting string.
 	//
-	// (2) The second (time-value) argument is optional and must be either a date string, number or collection field identifier
-	// that matches one of the formats listed in https://sqlite.org/lang_datefunc.html#time_values.
+	// (2) The second (time-value) argument is optional and must be either a date string, number or collection field identifier.
 	//
 	// (3+) The remaining (modifiers) optional arguments are expected to be
-	// string literals matching the listed modifiers in https://sqlite.org/lang_datefunc.html#modifiers.
+	// string literals matching date modifiers.
 	//
 	// A multi-match constraint will be also applied in case the time-value
 	// is an identifier as a result of a multi-value relation field.

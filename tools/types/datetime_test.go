@@ -360,11 +360,6 @@ func TestDateTimeValue(t *testing.T) {
 		value    any
 		expected any
 	}{
-		/* SQLite:
-		{"", ""},
-		{"invalid", ""},
-		*/
-		// PostgreSQL:
 		{"", nil},
 		{"invalid", nil},
 		{1641024040, "2022-01-01 08:00:40.000Z"},

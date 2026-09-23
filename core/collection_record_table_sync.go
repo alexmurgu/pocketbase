@@ -141,16 +141,6 @@ func (app *BaseApp) SyncRecordTableSchema(newCollection *Collection, oldCollecti
 		return txErr
 	}
 
-	/* SQLite:
-	// run optimize per the SQLite recommendations
-	// (https://www.sqlite.org/pragma.html#pragma_optimize)
-	_, optimizeErr := app.NonconcurrentDB().NewQuery("PRAGMA optimize").Execute()
-	if optimizeErr != nil {
-		app.Logger().Warn("Failed to run PRAGMA optimize after record table sync", slog.String("error", optimizeErr.Error()))
-	}
-	*/
-	// PostgreSQL: automatically handled by the database
-
 	return nil
 }
 
@@ -184,16 +174,6 @@ func normalizeSingleVsMultipleFieldChanges(app App, newCollection *Collection, o
 			// -------------------------------------------------------
 
 			// temporary drop all views to prevent reference errors during the columns renaming
-			// (this is used as an "alternative" to the writable_schema PRAGMA)
-			/* SQLite:
-			views := []viewDef{}
-			err := txApp.DB().Select("name", "sql").
-				From("sqlite_master").
-				AndWhere(dbx.NewExp("sql is not null")).
-				AndWhere(dbx.HashExp{"type": "view"}).
-				All(&views)
-			*/
-			// PostgreSQL:
 			views, err := findAllViewsInDependencyOrder(txApp)
 			if err != nil {
 				return err
@@ -225,22 +205,6 @@ func normalizeSingleVsMultipleFieldChanges(app App, newCollection *Collection, o
 			if !isOldMultiple && isNewMultiple {
 				// single -> multiple (convert to array)
 				copyQuery = txApp.DB().NewQuery(fmt.Sprintf(
-					/* SQLite:
-					`UPDATE {{%s}} set [[%s]] = (
-							CASE
-								WHEN COALESCE([[%s]], '') = ''
-								THEN '[]'
-								ELSE (
-									CASE
-										WHEN json_valid([[%s]]) AND json_type([[%s]]) == 'array'
-										THEN [[%s]]
-										ELSE json_array([[%s]])
-									END
-								)
-							END
-						)`
-					*/
-					// PostgreSQL:
 					`UPDATE {{%s}} set [[%s]] = (
 							CASE
 								WHEN COALESCE([[%s]]::text, '') = ''
@@ -264,22 +228,6 @@ func normalizeSingleVsMultipleFieldChanges(app App, newCollection *Collection, o
 				// note: for file fields the actual file objects are not
 				// deleted allowing additional custom handling via migration
 				copyQuery = txApp.DB().NewQuery(fmt.Sprintf(
-					/* SQLite:
-					`UPDATE {{%s}} set [[%s]] = (
-						CASE
-							WHEN COALESCE([[%s]], '[]') = '[]'
-							THEN ''
-							ELSE (
-								CASE
-									WHEN json_valid([[%s]]) AND json_type([[%s]]) == 'array'
-									THEN COALESCE(json_extract([[%s]], '$[#-1]'), '')
-									ELSE [[%s]]
-								END
-							)
-						END
-					)`,
-					*/
-					// PostgreSQL:
 					`UPDATE {{%s}} set [[%s]] = (
 						CASE
 							WHEN COALESCE([[%s]]::text, '[]') = '[]'

@@ -11,7 +11,6 @@ import (
 	"runtime"
 
 	"github.com/pocketbase/pocketbase/tools/archive"
-	"github.com/pocketbase/pocketbase/tools/osutils"
 	"github.com/pocketbase/pocketbase/tools/security"
 )
 
@@ -144,60 +143,6 @@ func (app *BaseApp) RestoreBackup(ctx context.Context, name string) error {
 			return errors.New("PostgreSQL backup restore is not supported from the dashboard; restore data.dump and auxiliary.dump with pg_restore during maintenance")
 		}
 
-		// ensure that at least a SQLite database file exists for legacy archives
-		extractedDB := filepath.Join(extractedDataDir, "data.db")
-		if _, err := os.Stat(extractedDB); err != nil {
-			return fmt.Errorf("data.db file is missing or invalid: %w", err)
-		}
-
-		oldTempDataDir := filepath.Join(localTempDir, "old_pb_data_"+security.PseudorandomString(8))
-
-		replaceErr := e.App.RunInTransaction(func(txApp App) error {
-			return txApp.AuxRunInTransaction(func(txApp App) error {
-				// move the current pb_data content to a special temp location
-				// that will hold the old data between dirs replace
-				// (the temp dir will be automatically removed on the next app start)
-				if err := osutils.MoveDirContent(txApp.DataDir(), oldTempDataDir, e.Exclude...); err != nil {
-					return fmt.Errorf("failed to move the current pb_data content to a temp location: %w", err)
-				}
-
-				// move the extracted archive content to the app's pb_data
-				if err := osutils.MoveDirContent(extractedDataDir, txApp.DataDir(), e.Exclude...); err != nil {
-					return fmt.Errorf("failed to move the extracted archive content to pb_data: %w", err)
-				}
-
-				return nil
-			})
-		})
-		if replaceErr != nil {
-			return replaceErr
-		}
-
-		revertDataDirChanges := func() error {
-			return e.App.RunInTransaction(func(txApp App) error {
-				return txApp.AuxRunInTransaction(func(txApp App) error {
-					if err := osutils.MoveDirContent(txApp.DataDir(), extractedDataDir, e.Exclude...); err != nil {
-						return fmt.Errorf("failed to revert the extracted dir change: %w", err)
-					}
-
-					if err := osutils.MoveDirContent(oldTempDataDir, txApp.DataDir(), e.Exclude...); err != nil {
-						return fmt.Errorf("failed to revert old pb_data dir change: %w", err)
-					}
-
-					return nil
-				})
-			})
-		}
-
-		// restart the app
-		if err := e.App.Restart(); err != nil {
-			if revertErr := revertDataDirChanges(); revertErr != nil {
-				panic(revertErr)
-			}
-
-			return fmt.Errorf("failed to restart the app process: %w", err)
-		}
-
-		return nil
+		return errors.New("invalid backup archive: missing data.dump; PostgreSQL backups must be restored with pg_restore during maintenance")
 	})
 }

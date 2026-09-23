@@ -165,17 +165,16 @@ type App interface {
 	// DB methods
 	// ---------------------------------------------------------------
 
-	// DB returns the default app data.db builder instance.
+	// DB returns the default app data database builder instance.
 	//
-	// To minimize SQLITE_BUSY errors, it automatically routes the
-	// SELECT queries to the underlying concurrent db pool and everything else
-	// to the nonconcurrent one.
+	// It automatically routes the SELECT queries to the underlying concurrent db pool
+	// and everything else to the nonconcurrent one.
 	//
 	// For more finer control over the used connections pools you can
 	// call directly ConcurrentDB() or NonconcurrentDB().
 	DB() dbx.Builder
 
-	// ConcurrentDB returns the concurrent app data.db builder instance.
+	// ConcurrentDB returns the concurrent app data database builder instance.
 	//
 	// This method is used mainly internally for executing db read
 	// operations in a concurrent/non-blocking manner.
@@ -186,13 +185,13 @@ type App interface {
 	// In a transaction the ConcurrentDB() and NonconcurrentDB() refer to the same *dbx.TX instance.
 	ConcurrentDB() dbx.Builder
 
-	// NonconcurrentDB returns the nonconcurrent app data.db builder instance.
+	// NonconcurrentDB returns the nonconcurrent app data database builder instance.
 	//
 	// The returned db instance is limited only to a single open connection,
 	// meaning that it can process only 1 db operation at a time (other queries queue up).
 	//
 	// This method is used mainly internally and in the tests to execute write
-	// (save/delete) db operations as it helps with minimizing the SQLITE_BUSY errors.
+	// (save/delete) db operations.
 	//
 	// Most users should use simply DB() as it will automatically
 	// route the query execution to ConcurrentDB() or NonconcurrentDB().
@@ -200,17 +199,16 @@ type App interface {
 	// In a transaction the ConcurrentDB() and NonconcurrentDB() refer to the same *dbx.TX instance.
 	NonconcurrentDB() dbx.Builder
 
-	// AuxDB returns the app auxiliary.db builder instance.
+	// AuxDB returns the app auxiliary database builder instance.
 	//
-	// To minimize SQLITE_BUSY errors, it automatically routes the
-	// SELECT queries to the underlying concurrent db pool and everything else
-	// to the nonconcurrent one.
+	// It automatically routes the SELECT queries to the underlying concurrent db pool
+	// and everything else to the nonconcurrent one.
 	//
 	// For more finer control over the used connections pools you can
 	// call directly AuxConcurrentDB() or AuxNonconcurrentDB().
 	AuxDB() dbx.Builder
 
-	// AuxConcurrentDB returns the concurrent app auxiliary.db builder instance.
+	// AuxConcurrentDB returns the concurrent app auxiliary database builder instance.
 	//
 	// This method is used mainly internally for executing db read
 	// operations in a concurrent/non-blocking manner.
@@ -221,13 +219,13 @@ type App interface {
 	// In a transaction the AuxConcurrentDB() and AuxNonconcurrentDB() refer to the same *dbx.TX instance.
 	AuxConcurrentDB() dbx.Builder
 
-	// AuxNonconcurrentDB returns the nonconcurrent app auxiliary.db builder instance.
+	// AuxNonconcurrentDB returns the nonconcurrent app auxiliary database builder instance.
 	//
 	// The returned db instance is limited only to a single open connection,
 	// meaning that it can process only 1 db operation at a time (other queries queue up).
 	//
 	// This method is used mainly internally and in the tests to execute write
-	// (save/delete) db operations as it helps with minimizing the SQLITE_BUSY errors.
+	// (save/delete) db operations.
 	//
 	// Most users should use simply AuxDB() as it will automatically
 	// route the query execution to AuxConcurrentDB() or AuxNonconcurrentDB().

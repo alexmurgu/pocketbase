@@ -23,10 +23,6 @@ func TestJSONFieldColumnType(t *testing.T) {
 
 	f := &core.JSONField{}
 
-	/* SQLite:
-	expected := "JSON DEFAULT NULL"
-	*/
-	// PostgreSQL:
 	expected := "JSONB DEFAULT NULL"
 
 	if v := f.ColumnType(app); v != expected {

@@ -23,10 +23,6 @@ func TestCollectionQuery(t *testing.T) {
 	app, _ := tests.NewTestApp()
 	defer app.Cleanup()
 
-	/* SQLite:
-	expected := "SELECT {{_collections}}.* FROM `_collections`"
-	*/
-	// PostgreSQL:
 	expected := `SELECT {{_collections}}.* FROM "_collections"`
 
 	sql := app.CollectionQuery().Build().SQL()

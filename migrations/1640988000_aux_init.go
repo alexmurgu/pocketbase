@@ -9,8 +9,8 @@ import (
 func init() {
 	core.SystemMigrations.Add(&core.Migration{
 		Up: func(txApp core.App) error {
-			if err := createSQLiteEquivalentFunctions(txApp.AuxDB()); err != nil {
-				return fmt.Errorf("createSQLiteEquivalentFunctions error: %w", err)
+			if err := createPostgresCompatibilityFunctions(txApp.AuxDB()); err != nil {
+				return fmt.Errorf("createPostgresCompatibilityFunctions error: %w", err)
 			}
 
 			/*

@@ -70,7 +70,10 @@ func (f FilterData) BuildExprWithLimit(
 
 				// try to json serialize as fallback
 				if replacement == "" {
-					raw, _ := json.Marshal(v)
+					raw, err := json.Marshal(v)
+					if err != nil {
+						return nil, err
+					}
 					replacement = string(raw)
 				}
 
@@ -182,54 +185,24 @@ func buildResolversExpr(
 	case fexpr.SignLike, fexpr.SignAnyLike:
 		// the right side is a column and therefor wrap it with "%" for contains like behavior
 		if len(right.Params) == 0 {
-			/* SQLite:
-			expr = dbx.NewExp(fmt.Sprintf("%s LIKE ('%%' || %s || '%%') ESCAPE '\\'", left.Identifier, right.Identifier), left.Params)
-			*/
-			// PostgreSQL:
 			expr = dbx.NewExp(fmt.Sprintf("%s LIKE ('%%' || %s || '%%') ESCAPE '\\'", castToText(left), castToText(right)), left.Params)
 		} else {
-			/* SQLite:
-			expr = dbx.NewExp(fmt.Sprintf("%s LIKE %s ESCAPE '\\'", left.Identifier, right.Identifier), mergeParams(left.Params, wrapLikeParams(right.Params)))
-			*/
 			expr = dbx.NewExp(fmt.Sprintf("%s LIKE %s ESCAPE '\\'", castToText(left), castToText(right)), mergeParams(left.Params, wrapLikeParams(right.Params)))
 		}
 	case fexpr.SignNlike, fexpr.SignAnyNlike:
 		// the right side is a column and therefor wrap it with "%" for not-contains like behavior
 		if len(right.Params) == 0 {
-			/* SQLite:
-			expr = dbx.NewExp(fmt.Sprintf("%s NOT LIKE ('%%' || %s || '%%') ESCAPE '\\'", left.Identifier, right.Identifier), left.Params)
-			*/
-			// PostgreSQL:
 			expr = dbx.NewExp(fmt.Sprintf("%s NOT LIKE ('%%' || %s || '%%') ESCAPE '\\'", castToText(left), castToText(right)), left.Params)
 		} else {
-			/* SQLite:
-			expr = dbx.NewExp(fmt.Sprintf("%s NOT LIKE %s ESCAPE '\\'", left.Identifier, right.Identifier), mergeParams(left.Params, wrapLikeParams(right.Params)))
-			*/
 			expr = dbx.NewExp(fmt.Sprintf("%s NOT LIKE %s ESCAPE '\\'", castToText(left), castToText(right)), mergeParams(left.Params, wrapLikeParams(right.Params)))
 		}
 	case fexpr.SignLt, fexpr.SignAnyLt:
-		/* SQLite:
-		expr = dbx.NewExp(fmt.Sprintf("%s < %s", left.Identifier, right.Identifier), mergeParams(left.Params, right.Params))
-		*/
-		// PostgreSQL:
 		expr = resolveOrderingExpr("<", left, right)
 	case fexpr.SignLte, fexpr.SignAnyLte:
-		/* SQLite:
-		expr = dbx.NewExp(fmt.Sprintf("%s <= %s", left.Identifier, right.Identifier), mergeParams(left.Params, right.Params))
-		*/
-		// PostgreSQL:
 		expr = resolveOrderingExpr("<=", left, right)
 	case fexpr.SignGt, fexpr.SignAnyGt:
-		/* SQLite:
-		expr = dbx.NewExp(fmt.Sprintf("%s > %s", left.Identifier, right.Identifier), mergeParams(left.Params, right.Params))
-		*/
-		// PostgreSQL:
 		expr = resolveOrderingExpr(">", left, right)
 	case fexpr.SignGte, fexpr.SignAnyGte:
-		/* SQLite:
-		expr = dbx.NewExp(fmt.Sprintf("%s >= %s", left.Identifier, right.Identifier), mergeParams(left.Params, right.Params))
-		*/
-		// PostgreSQL:
 		expr = resolveOrderingExpr(">=", left, right)
 	}
 
@@ -281,15 +254,6 @@ func buildResolversExpr(
 }
 
 var normalizedIdentifiers = map[string]string{
-	/* SQLite:
-	// if `null` field is missing, treat `null` identifier as NULL token
-	"null": "NULL",
-	// if `true` field is missing, treat `true` identifier as TRUE token
-	"true": "1",
-	// if `false` field is missing, treat `false` identifier as FALSE token
-	"false": "0",
-	*/
-	// PostgreSQL:
 	"null":  "NULL",
 	"true":  "TRUE",
 	"false": "FALSE",
@@ -341,15 +305,6 @@ func resolveToken(token fexpr.Token, fieldResolver FieldResolver) (*ResolverResu
 			Params:     dbx.Params{placeholder: token.Literal},
 		}, nil
 	case fexpr.TokenNumber:
-		/* SQLite:
-		placeholder := "t" + security.PseudorandomString(8)
-
-		return &ResolverResult{
-			Identifier: "{:" + placeholder + "}",
-			Params:     dbx.Params{placeholder: cast.ToFloat64(token.Literal)},
-		}, nil
-		*/
-		// PostgreSQL:
 		// handle a special case (where 1 = 1) where both left and right identifiers are numeric numbers.
 		// Eg: To prevent SQL injection, for query "1=1", dbx will generate "select xxx where $1 = $2" (prepared statement) with params [1, 1].
 		// because we didn't specify the type for both $1 and $2, so PostgreSQL will treat them as text, and expect all params to be text types.
@@ -394,27 +349,11 @@ func resolveEqualExpr(equal bool, left, right *ResolverResult) dbx.Expression {
 	isLeftEmpty := isEmptyIdentifier(left) || (len(left.Params) == 1 && hasEmptyParamValue(left))
 	isRightEmpty := isEmptyIdentifier(right) || (len(right.Params) == 1 && hasEmptyParamValue(right))
 
-	/* SQLite:
-	equalOp := "="
-	nullEqualOp := "IS"
-	*/
-	// PostgreSQL:
 	equalOp := "="
 	nullEqualOp := "IS NOT DISTINCT FROM"
 	concatOp := "OR"
 	nullExpr := "IS NULL"
 	if !equal {
-		/* SQLite:
-		// always use `IS NOT` instead of `!=` because direct non-equal comparisons
-		// to nullable column values that are actually NULL yields to NULL instead of TRUE, eg.:
-		// `'example' != nullableColumn` -> NULL even if nullableColumn row value is NULL
-		// Note: `select 'non-null-string' != NULL` returns NULL instead of True.
-		equalOp = "IS NOT"
-		nullEqualOp = equalOp
-		*/
-		// PostgreSQL:
-		// In PostgreSQL, `IS NOT` only works for NULL values, but not for empty strings.
-		// `IS DISTINCT FROM` works like SQLite's `IS NOT`.
 		equalOp = "IS DISTINCT FROM"
 		nullEqualOp = equalOp
 		concatOp = "AND"
@@ -426,9 +365,6 @@ func resolveEqualExpr(equal bool, left, right *ResolverResult) dbx.Expression {
 	// a IS NOT b
 	if left.NullFallback == NullFallbackDisabled || right.NullFallback == NullFallbackDisabled {
 		return dbx.NewExp(
-			/* SQLite:
-			fmt.Sprintf("%s %s %s", left.Identifier, nullEqualOp, right.Identifier),
-			*/
 			typeAwareJoinNoCoalesce(left, nullEqualOp, right),
 			mergeParams(left.Params, right.Params),
 		)
@@ -442,36 +378,7 @@ func resolveEqualExpr(equal bool, left, right *ResolverResult) dbx.Expression {
 	// direct compare since at least one of the operands is known to be non-empty
 	// eg. a = 'example'
 	if isKnownNonEmptyIdentifier(left) || isKnownNonEmptyIdentifier(right) {
-		/* SQLite:
-
-		leftIdentifier := left.Identifier
-		if isLeftEmpty {
-			leftIdentifier = "''"
-		}
-		rightIdentifier := right.Identifier
-		if isRightEmpty {
-			rightIdentifier = "''"
-		}
-		*/
-		// PostgreSQL:
-		// TODO：
-		// create a copy of ResolvedResult.
-		// If it is empty string, show a empty string.
-		// Remember to remove the params from the shadow copy if it is empty or null
-		// leftIdentifier := left.Identifier
-		// if isLeftEmpty {
-		// 	leftIdentifier = "''"
-		// }
-		// rightIdentifier := right.Identifier
-		// if isRightEmpty {
-		// 	rightIdentifier = "''"
-		// }
-
 		return dbx.NewExp(
-			/* SQLite:
-			fmt.Sprintf("%s %s %s", leftIdentifier, equalOp, rightIdentifier),
-			*/
-			// PostgreSQL:
 			typeAwareJoinNoCoalesce(left, equalOp, right),
 			mergeParams(left.Params, right.Params),
 		)
@@ -482,10 +389,6 @@ func resolveEqualExpr(equal bool, left, right *ResolverResult) dbx.Expression {
 	// "" IS NOT b AND b IS NOT NULL
 	if isLeftEmpty {
 		return dbx.NewExp(
-			/* SQLite:
-			fmt.Sprintf("('' %s %s %s %s %s)", equalOp, right.Identifier, concatOp, right.Identifier, nullExpr),
-			*/
-			// PostgreSQL:
 			fmt.Sprintf("('' %s %s %s %s %s)", equalOp, withNonJsonbType(right.Identifier, "text"), concatOp, right.Identifier, nullExpr),
 			mergeParams(left.Params, right.Params),
 		)
@@ -495,30 +398,11 @@ func resolveEqualExpr(equal bool, left, right *ResolverResult) dbx.Expression {
 	// a IS NOT "" AND a IS NOT NULL
 	if isRightEmpty {
 		return dbx.NewExp(
-			/* SQLite:
-			fmt.Sprintf("(%s %s '' %s %s %s)", left.Identifier, equalOp, concatOp, left.Identifier, nullExpr),
-			*/
-			// PostgreSQL:
-			// Note: pocketbase treats empty string the same as NULL.
-			// eg: WHERE col_int::text = '' OR col_int IS NULL
 			fmt.Sprintf("(%s %s '' %s %s %s)", withNonJsonbType(left.Identifier, "text"), equalOp, concatOp, left.Identifier, nullExpr),
 			mergeParams(left.Params, right.Params),
 		)
 	}
 
-	/* SQLite:
-	// fallback to a COALESCE comparison
-	return dbx.NewExp(
-		fmt.Sprintf(
-			"COALESCE(%s, '') %s COALESCE(%s, '')",
-			left.Identifier,
-			equalOp,
-			right.Identifier,
-		),
-		mergeParams(left.Params, right.Params),
-	)
-	*/
-	// PostgreSQL:
 	// 1. We can't use COALESCE() here, because we never know the type of the column to be compared.
 	//    Otherwise, PostgreSQL will throw a type mismatch error if we use default empty string.
 	// 2. to_jsonb() erase the type so that different types can be compared safely.
@@ -1005,10 +889,6 @@ func (e *manyVsManyExpr) Build(db *dbx.DB, params dbx.Params) string {
 	}
 
 	return fmt.Sprintf(
-		/* SQLite:
-		"NOT EXISTS (SELECT 1 FROM (%s) {{%s}} LEFT JOIN (%s) {{%s}} WHERE %s)",
-		*/
-		// PostgreSQL:
 		"NOT EXISTS (SELECT 1 FROM (%s) {{%s}} LEFT JOIN (%s) {{%s}} ON 1 = 1 WHERE %s)",
 		e.left.MultiMatchSubQuery.Build(db, params),
 		lAlias,

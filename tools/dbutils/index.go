@@ -58,24 +58,18 @@ func (idx Index) Build() string {
 	}
 
 	if idx.SchemaName != "" {
-		// str.WriteString("`"), // SQLite
-		str.WriteString(`"`) // PostgreSQL
+		str.WriteString(`"`)
 		str.WriteString(idx.SchemaName)
-		// str.WriteString("`.") // SQLite
-		str.WriteString(`".`) // PostgreSQL
+		str.WriteString(`".`)
 	}
 
-	// str.WriteString("`") // SQLite
-	str.WriteString(`"`) // PostgreSQL
+	str.WriteString(`"`)
 	str.WriteString(idx.IndexName)
-	// str.WriteString("` ") // SQLite
-	str.WriteString(`" `) // PostgreSQL
+	str.WriteString(`" `)
 
-	// str.WriteString("ON `") // SQLite
-	str.WriteString(`ON "`) // PostgreSQL
+	str.WriteString(`ON "`)
 	str.WriteString(idx.TableName)
-	// str.WriteString("` (") // SQLite
-	str.WriteString(`" (`) // PostgreSQL
+	str.WriteString(`" (`)
 
 	if len(idx.Columns) > 1 {
 		str.WriteString("\n  ")
@@ -97,11 +91,9 @@ func (idx Index) Build() string {
 			str.WriteString(trimmedColName)
 		} else {
 			// regular identifier
-			// str.WriteString("`") // SQLite
-			str.WriteString(`"`) // PostgreSQL
+			str.WriteString(`"`)
 			str.WriteString(trimmedColName)
-			// str.WriteString("`") // SQLite
-			str.WriteString(`"`) // PostgreSQL
+			str.WriteString(`"`)
 		}
 
 		if col.Collate != "" {

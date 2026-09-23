@@ -96,7 +96,6 @@ func requiresNonTransactionalExecution(query string) bool {
 func executeQuery(app core.App, query string, maxRows int) (*runSQLResult, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		// see https://github.com/mattn/go-sqlite3/issues/950
 		return nil, errors.New("empty query")
 	}
 

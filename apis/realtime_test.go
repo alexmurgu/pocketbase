@@ -999,10 +999,6 @@ type CustomModelResolve struct {
 	core.BaseModel
 	tableName string
 
-	/* SQLite:
-	Created string `db:"created"`
-	*/
-	// PostgreSQL:
 	Created time.Time `db:"created"`
 }
 
