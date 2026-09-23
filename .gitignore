@@ -6,6 +6,9 @@
 # goreleaser builds folder
 /.builds/
 
+# local runtime data
+pb_data/
+
 # tests coverage
 coverage.out
 

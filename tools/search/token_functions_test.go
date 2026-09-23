@@ -233,12 +233,6 @@ func TestTokenFunctionsGeoDistanceExec(t *testing.T) {
 func TestTokenFunctionsStrftime(t *testing.T) {
 	t.Parallel()
 
-	testDB, err := createTestDB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testDB.Close()
-
 	fn, ok := TokenFunctions["strftime"]
 	if !ok {
 		t.Error("Expected strftime token function to be registered.")
@@ -534,11 +528,8 @@ func TestTokenFunctionsStrftime(t *testing.T) {
 func TestTokenFunctionsStrftimeExec(t *testing.T) {
 	t.Parallel()
 
-	testDB, err := createTestDB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testDB.Close()
+	testDB, cleanup := createTestDB()
+	defer cleanup()
 
 	fn, ok := TokenFunctions["strftime"]
 	if !ok {
