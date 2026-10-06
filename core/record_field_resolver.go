@@ -154,6 +154,10 @@ func (r *RecordFieldResolver) UpdateQuery(query *dbx.SelectQuery) error {
 		}
 	}
 
+	if len(r.joins) > 0 || len(r.listRuleJoins) > 0 {
+		r.updateQueryWithSortedDeduplication(query)
+	}
+
 	return nil
 }
 
